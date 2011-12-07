@@ -37,7 +37,7 @@ optimal_value solveOpt(float g, float p, float r, int R, RowVector v);
 void deleteOpt(void);
 intNDArray<int> randi(int start, int end, int number);
 
-DEFUN_DLD(SPARoptimal1StorageV1_1, args, nargout, "W,S,Iter,BR,T")
+DEFUN_DLD(SPARoptimal1Storage, args, nargout, "W,S,Iter,BR,T")
 {
 	octave_value_list retval;
 	int nargin = args.length();
