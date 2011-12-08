@@ -33,11 +33,11 @@ float nuc;
 float nud;
 
 void initOpt(void);
-optimal_value solveOpt(float g, float p, float r, int R, RowVector v);
+optimal_value solveOpt(int g, int p, int r, int R, RowVector v);
 void deleteOpt(void);
 intNDArray<int> randi(int start, int end, int number);
 
-DEFUN_DLD(SPARoptimal1Storage, args, nargout, "W,S,Iter,BR,T")
+DEFUN_DLD(SPARoptimal1Storage, args, nargout, "W,S,Iter,rho,T")
 {
 	octave_value_list retval;
 	int nargin = args.length();
@@ -49,7 +49,7 @@ DEFUN_DLD(SPARoptimal1Storage, args, nargout, "W,S,Iter,BR,T")
 		octave_scalar_map W = args(0).scalar_map_value();
 		octave_scalar_map S = args(1).scalar_map_value();
 		int Iter = args(2).int_value();
-		BR = args(3).int_value();
+		rho = args(3).int_value();
 		T = args(4).float_value();
 
 		Matrix g = W.contents(0).matrix_value();
@@ -73,12 +73,12 @@ DEFUN_DLD(SPARoptimal1Storage, args, nargout, "W,S,Iter,BR,T")
 		dv_R(0) = N;
 		dv_R(1) = 1;
 
-		Matrix v(BW*N,BR-1);
 		intNDArray<int> R(dv_R,0); // Pre-decision asset level
 		intNDArray<int> Rx(dv_R,0); // Post-decision asset level
-		Matrix NV(BW*N,BR-1); // Number of visits to the corresponding state
-		rho = (BR-2)/Qmax; // 1/nu
-		int R0 = floor(q0*rho); // Storage level initialization
+		BR = floor(rho*Qmax);
+		Matrix v(BW*N,BR);
+		Matrix NV(BW*N,BR); // Number of visits to the corresponding state
+		int R0 = floor(rho*q0); // Storage level initialization
 		optimal_value ret, ret1, ret2;
 		float vhatlo, vhatup;
 		Matrix z(1,2);
@@ -87,7 +87,7 @@ DEFUN_DLD(SPARoptimal1Storage, args, nargout, "W,S,Iter,BR,T")
 		RowVector q(N);
 
 		v.fill(0);
-		NV.fill(0);
+		NV.fill(1);
 		z.fill(0);
 
 		initOpt();
@@ -104,7 +104,7 @@ DEFUN_DLD(SPARoptimal1Storage, args, nargout, "W,S,Iter,BR,T")
 				else R(k) = Rx(k-1);
 
 				// Find optimal value function and compute post-decision asset level
-				ret = solveOpt(g(sample(k),k),p(sample(k),k),r(sample(k),k),R(k),v.row(sample(k)*N+k));
+				ret = solveOpt(floor(rho*g(sample(k),k)),floor(rho*p(sample(k),k)),floor(rho*r(sample(k),k)),R(k),v.row(sample(k)*N+k));
 				Rx(k) = ret.Rx;
 
 				// Count number of visits
@@ -113,34 +113,29 @@ DEFUN_DLD(SPARoptimal1Storage, args, nargout, "W,S,Iter,BR,T")
 				if(k < N-1)
 				{
 					// Observe sample slopes
-					ret1 = solveOpt(g(sample(k+1),k+1),p(sample(k+1),k+1),r(sample(k+1),k+1),Rx(k),v.row(sample(k+1)*N+k+1));
+					ret1 = solveOpt(floor(rho*g(sample(k+1),k+1)),floor(rho*p(sample(k+1),k+1)),floor(rho*r(sample(k+1),k+1)),Rx(k),v.row(sample(k+1)*N+k+1));
 					if(Rx(k) == 0) vhatlo = ret1.F;
 					else
 					{
-						ret2 = solveOpt(g(sample(k+1),k+1),p(sample(k+1),k+1),r(sample(k+1),k+1),Rx(k)-1,v.row(sample(k+1)*N+k+1));
+						ret2 = solveOpt(floor(rho*g(sample(k+1),k+1)),floor(rho*p(sample(k+1),k+1)),floor(rho*r(sample(k+1),k+1)),Rx(k)-1,v.row(sample(k+1)*N+k+1));
 						vhatlo = ret1.F-ret2.F;
 					}
 
-					ret2 = solveOpt(g(sample(k+1),k+1),p(sample(k+1),k+1),r(sample(k+1),k+1),Rx(k),v.row(sample(k+1)*N+k+1));
-					if(Rx(k) == BR-1) vhatup = ret2.F;
+					ret2 = solveOpt(floor(rho*g(sample(k+1),k+1)),floor(rho*p(sample(k+1),k+1)),floor(rho*r(sample(k+1),k+1)),Rx(k),v.row(sample(k+1)*N+k+1));
+					if(Rx(k) == BR-1) vhatup = 0;
 					else
 					{
-						ret1 = solveOpt(g(sample(k+1),k+1),p(sample(k+1),k+1),r(sample(k+1),k+1),Rx(k)+1,v.row(sample(k+1)*N+k+1));
+						ret1 = solveOpt(floor(rho*g(sample(k+1),k+1)),floor(rho*p(sample(k+1),k+1)),floor(rho*r(sample(k+1),k+1)),Rx(k)+1,v.row(sample(k+1)*N+k+1));
 						vhatup = ret1.F-ret2.F;
 					}
 
 					// Update slopes
 					// Calculate alpha
-					RowVector NVmax(BW);
-					for(int l=0; l<BW; l++)
-					{
-						NVmax(l) = NV.row(l*N+k).max();
-					}
-					alpha = 1/NVmax.max();
+					alpha = 1/NV(sample(k)*N+k,Rx(k));
 
 					// Calculate z
 					z(0) = (1-alpha)*v(sample(k)*N+k,Rx(k))+alpha*vhatlo;
-					if(Rx(k)+1 < BR-1)
+					if(Rx(k)+1 < BR)
 					{
 						z(1) = (1-alpha)*v(sample(k)*N+k,Rx(k)+1)+alpha*vhatup;
 					}
@@ -150,23 +145,21 @@ DEFUN_DLD(SPARoptimal1Storage, args, nargout, "W,S,Iter,BR,T")
 					}
 
 					// Projection operation
-					for(int level=0; level<BR-1; level++)
+					v(sample(k)*N+k,Rx(k)) = z(0);
+					if(Rx(k)+1 < BR)
+					{
+						v(sample(k)*N+k,Rx(k)+1) = z(1);
+					}
+
+					for(int level=0; level<BR; level++)
 					{
 						if(level < Rx(k) and v(sample(k)*N+k,level) <= z(0))
 						{
-							v(sample(k)*N+k,level)=z(0);
+							v(sample(k)*N+k,level) = z(0);
 						}
 						else if(level > (Rx(k)+1) and v(sample(k)*N+k,level) >= z(1))
 						{
-							v(sample(k)*N+k,level)=z(1);
-						}
-						else if(level == Rx(k))
-						{
-							v(sample(k)*N+k,level)=z(0);
-						}
-						else if(level == Rx(k)+1)
-						{
-							v(sample(k)*N+k,level)=z(1);
+							v(sample(k)*N+k,level) = z(1);
 						}
 					} // endfor level
 				} // endif
@@ -177,8 +170,8 @@ DEFUN_DLD(SPARoptimal1Storage, args, nargout, "W,S,Iter,BR,T")
 			q(k) = R(k)/rho;
 		}
 
-		retval(0) = octave_value(q);
-retval(1) = octave_value(R);
+		retval(0) = octave_value(Rx+1);
+		retval(1) = octave_value(v);
 
 		deleteOpt();
 	}
@@ -196,15 +189,13 @@ void initOpt(void)
 	double val[4+BR-1];
 
 	lp = glp_create_prob();
-	glp_add_rows(lp, 4);
+	glp_add_rows(lp, 3);
 	glp_add_cols(lp, 4+BR-1);
 	glp_set_obj_dir(lp, GLP_MAX);
 
 	// Structural variable bounds
-	glp_set_col_bnds(lp, 1, GLP_LO, 0, 0); // Storage charge uc >= 0
-	glp_set_col_bnds(lp, 2, GLP_LO, 0, 0); // Storage discharge ud >= 0
-	glp_set_col_bnds(lp, 3, GLP_LO, 0, 0); // Grid import energy ggr >= 0
-	glp_set_col_bnds(lp, 4, GLP_LO, 0, 0); // Grid export energy rgr >= 0
+	glp_set_col_bnds(lp, 3, GLP_LO, 0, 0);
+	glp_set_col_bnds(lp, 4, GLP_LO, 0, 0);
 	for(int m=1; m<=BR-1; m++)
 	{
 		glp_set_col_bnds(lp, m+4, GLP_DB, 0, 1); // 0 <= ytr <= 1
@@ -229,8 +220,8 @@ void initOpt(void)
 
 	// Value function constraint
 	// -T*nuc*uc*rho+T*(1/nud)*ud*rho+sum{i in BR}ytr = nul*R
-	ind[1] = 1; val[1] = -T*nuc*rho;
-	ind[2] = 2; val[2] = T*(1/nud)*rho;
+	ind[1] = 1; val[1] = -T*nuc;
+	ind[2] = 2; val[2] = T*(1/nud);
 	ind[3] = 3; val[3] = 0;
 	ind[4] = 4; val[4] = 0;
 	for(int m=1; m<=BR-1; m++)
@@ -239,20 +230,8 @@ void initOpt(void)
 	}
 	glp_set_mat_row(lp, 2, 4+BR-1, ind, val);
 
-	// Maximum capacity constraint
-	// T*nuc*uc-T*(1/nud)*ud <= Qmax-nul*q
-	ind[1] = 1; val[1] = T*nuc;
-	ind[2] = 2; val[2] = -T*(1/nud);
-	ind[3] = 3; val[3] = 0;
-	ind[4] = 4; val[4] = 0;
-	for(int m=1; m<=BR-1; m++)
-	{
-		ind[m+4] = m+4; val[m+4] = 0;
-	}
-	glp_set_mat_row(lp, 3, 4+BR-1, ind, val);
-
-	// Minimum capacity constraint
-	// T*nuc*uc-T*(1/nud)*ud >= Qmin-nul*q
+	// Minimum and Maximum capacity constraint
+	// Qmin-nul*q <= T*nuc*uc-T*(1/nud)*ud <= Qmax-nul*q
 	ind[1] = 1; val[1] = T*nuc;
 	ind[2] = 2; val[2] = -T*(1/nud);
 	ind[3] = 3; val[3] = 0;
@@ -268,9 +247,8 @@ void initOpt(void)
 	parm.msg_lev = GLP_MSG_ERR;
 }
 
-optimal_value solveOpt(float g, float p, float r, int R, RowVector v)
+optimal_value solveOpt(int g, int p, int r, int R, RowVector v)
 {
-	float q = R/rho;
 	optimal_value retval;
 
 	// Objectiv coefficient
@@ -281,10 +259,8 @@ optimal_value solveOpt(float g, float p, float r, int R, RowVector v)
 	}
 
 	// Structural variable bounds
-//	glp_set_col_bnds(lp, 1, GLP_UP, 0, fmin(C,1/nuc*g/T)); // Storage charge uc
-	glp_set_col_bnds(lp, 1, GLP_UP, 0, C); // Storage charge uc
-//	glp_set_col_bnds(lp, 2, GLP_UP, 0, fmin(D,nud*R/rho/T)); // Storage discharge ud
-	glp_set_col_bnds(lp, 2, GLP_UP, 0, D); // Storage discharge ud
+	glp_set_col_bnds(lp, 1, GLP_DB, 0, floor(C*rho)); // Storage charge uc
+	glp_set_col_bnds(lp, 2, GLP_DB, 0, floor(D*rho)); // Storage discharge ud
 
 	// Node balance constraint
 	// uc-ud-ggr+rgr = g-r
@@ -294,33 +270,34 @@ optimal_value solveOpt(float g, float p, float r, int R, RowVector v)
 	// -T*nuc*uc*rho+T*(1/nud)*ud*rho+sum{r = 0..BR-1}ytr = nul*R
 	glp_set_row_bnds(lp, 2, GLP_FX, nul*R, nul*R);
 
-	// Maximum capacity constraint
-	// T*nuc*uc-T*(1/nud)*ud <= Qmax-nul*q
-	glp_set_row_bnds(lp, 3, GLP_UP, 0, Qmax-nul*q);
-
-	// Minimum capacity constraint
-	// T*nuc*uc-T*(1/nud)*ud >= Qmin-nul*q
-	glp_set_row_bnds(lp, 4, GLP_LO, Qmin-nul*q, 0);
+	// Minimum and Maximum capacity constraint
+	// Qmin-nul*q <= T*nuc*uc-T*(1/nud)*ud <= Qmax-nul*q
+	glp_set_row_bnds(lp, 3, GLP_DB, floor(rho*Qmin)-nul*R, BR-nul*R);
 
 	// Solve
 	glp_simplex(lp, &parm);
 
 	float uc = glp_get_col_prim(lp, 1);
 	float ud = glp_get_col_prim(lp, 2);
-//	float ggr = glp_get_col_prim(lp, 3);
-//	float rgr = glp_get_col_prim(lp, 4);
+	float ggr = glp_get_col_prim(lp, 3);
+	float rgr = glp_get_col_prim(lp, 4);
+	RowVector y(BR);
+	for(int m=1; m<=BR-1; m++)
+	{
+		y(m) = glp_get_col_prim(lp, m+4);
+	}
 
 	retval.F = glp_get_obj_val(lp);
-	float Rxerr = floor((nul*q+T*(nuc*uc-(1/nud)*ud))*rho);
+	int Rxerr = floor(nul*R+T*(nuc*uc-(1/nud)*ud));
 	if (Rxerr < 0)
 	{
 		retval.Rx = 0;
-		printf("solveOpt Warning: Negative index: Rxerr=%g\n",Rxerr);
+		printf("solveOpt Warning: Negative index: Rxerr=%i\n",Rxerr);
 	}
-	else if(Rxerr > BR-2)
+	else if(Rxerr > BR-1)
 	{
-		retval.Rx = BR-2;
-		printf("solveOpt Warning: Too big index: Rxerr=%g\n",Rxerr);
+		retval.Rx = BR-1;
+		printf("solveOpt Warning: Too big index: Rxerr=%i\n",Rxerr);
 	}
 	else retval.Rx = Rxerr;
 
