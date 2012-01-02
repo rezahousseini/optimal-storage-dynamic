@@ -39,15 +39,14 @@ P.pc(4,:,:)=p;
 P.pd=zeros(numS,numN,numW);
 P.pd(4,:,:)=p;
 
-
 mkoctfile SPARoptimalNStorage.cc -lglpk
 tic;
 [q,uc,ud]=SPARoptimalNStorage(rho,g,r,P,S,numI,T);
 toc;
 
 figure(1)
-plot(t,r,t,g,t,g-uc(1,:)'-uc(2,:)'-uc(3,:)'+ud(1,:)'+ud(2,:)'+ud(3,:)')
-legend("Nachfrage","Produktion ohne Speicher","Produktion mit Speicher")
+plot(t,r,t,g,t,g-uc(1,:)'-uc(2,:)'-uc(3,:)'+ud(1,:)'+ud(2,:)'+ud(3,:)',t,ud(4,:)'-uc(4,:)')
+legend("Nachfrage","Produktion ohne Speicher","Produktion mit Speicher","Netz")
 grid on
 
 %figure(2)

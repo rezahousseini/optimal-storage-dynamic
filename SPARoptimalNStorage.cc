@@ -51,14 +51,17 @@ int32NDArray randi(int start, int end, int number);
 int32NDArray scale(NDArray S, float s);
 
 /* ----------------------------------------------------------------------------*
- * DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho,g,r,P,S,numI,T")         *
+ * DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")   *
  * ----------------------------------------------------------------------------*
- * Main function.
+ * Main function. Call "SPARoptimalNStorage" in Octave.
  *
- * @param SPARoptimalNStorage The identifiying name of the program in octave.
- * @param args Input arguments.
- * @param nargout Number of output arguments.
- * @param "rho, g, r, P, S, numI, T" Function call in octave.
+ * @param rho Scaling factor for the quantisation.
+ * @param g numW samples of generated energy for every time step numN.
+ * @param r numW samples of requested energy for every time step numN.
+ * @param P Structure with numW samples of energy cost for every time step numN.
+ * @param S Structure with storage parameters.
+ * @param numI Number of Iterations.
+ * @param T Time step size.
  *
  * @return q, uc, ud
  *
@@ -468,17 +471,16 @@ void initOpt(void)
  * --------------------------------------------------------------------------- *
  * Solving the linear programming problem.
  *
- *    | Description                                             | Size
- * ----------------------------------------------------------------------------
- * g  | Generated energy (node input to satisfie).              | 1 x 1
- * r  | Requested energy (node output to satisfie).             | 1 x 1
- * pg | Price of one amount of generated enery.                 | 1 x 1
- * pr | Price of one amount of requested enery.                 | 1 x 1
- * pc | Price vector for charge vaiables of all resources.      | numS x 1
- * pd | Price vector for discharge vaiables of all resources.   | numS x 1
- * R  | Resource level vector for all the finite capacities.    | numSfin x 1
- * v  | Piecewise value function approximation for every level  | sum(numR) x 1
- *    | step.                                                   |
+ * @param g  Generated energy (node input to satisfie). 1 x 1
+ * @param r Requested energy (node output to satisfie). 1 x 1
+ * @param pg Price of one amount of generated enery. 1 x 1
+ * @param pr Price of one amount of requested enery. 1 x 1
+ * @param pc Price vector for charge vaiables of all resources. numS x 1
+ * @param pd Price vector for discharge vaiables of all resources. numS x 1
+ * @param R Resource level vector for all finite capacities. numSfin x 1
+ * @param v Value function approximation for all level steps. sum(numR) x 1
+ *
+ * @return Optimal solution argument and value.
  *
  */
 
