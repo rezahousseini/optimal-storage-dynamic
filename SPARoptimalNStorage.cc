@@ -58,13 +58,13 @@ int32NDArray scale(NDArray S, float s);
  * @param SPARoptimalNStorage The identifiying name of the program in octave.
  * @param args Input arguments.
  * @param nargout Number of output arguments.
- * @param "rho,g,r,P,S,numI,T" Function call in octave.
+ * @param "rho, g, r, P, S, numI, T" Function call in octave.
  *
  * @return q, uc, ud
  *
  */ 
 
-DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho,g,r,P,S,numI,T")
+DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 {
 	octave_value_list retval;
 	int nargin = args.length();
@@ -101,12 +101,12 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho,g,r,P,S,numI,T")
 		FloatNDArray vhatlo(dim_vector(numSfin, 1));
 		FloatNDArray vhatup(dim_vector(numSfin, 1));
 		float alpha;
-		FloatNDArray zlo(dim_vector(numSfin,1), 0);
-		FloatNDArray zup(dim_vector(numSfin,1), 0);
+		FloatNDArray zlo(dim_vector(numSfin, 1), 0);
+		FloatNDArray zup(dim_vector(numSfin, 1), 0);
 		
-		FloatNDArray q(dim_vector(numSfin,numN));
-		FloatNDArray uc(dim_vector(numS,numN));
-		FloatNDArray ud(dim_vector(numS,numN));
+		FloatNDArray q(dim_vector(numSfin, numN));
+		FloatNDArray uc(dim_vector(numS, numN));
+		FloatNDArray ud(dim_vector(numS, numN));
 		
 		for (int i=0; i<numI; i++)
 		{
@@ -117,31 +117,14 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho,g,r,P,S,numI,T")
 				// Compute pre-decision asset level
 				if (k != 0) R.insert(Rx.column(k-1), 0, k);
 				
-//				printf("R=");
-//				for(int m=0; m<numSfin; m++)
-//				{
-//					for(int g=0; g<(int)numN; g++)
-//					{
-//						printf("%i ",(int)R(m,g));
-//					}
-//					printf("\n");
-//				}
-//				
-//				printf("Rx=");
-//				for(int m=0; m<numSfin; m++)
-//				{
-//					for(int g=0; g<(int)numN; g++)
-//					{
-//						printf("%i ",(int)Rx(m,g));
-//					}
-//					printf("\n");
-//				}
-				
-				// Find optimal value function and compute post-decision asset level
-				ret = solveOpt(g.column(smpl(k)).elem(k),r.column(smpl(k)).elem(k),
-					pg.column(smpl(k)).elem(k),pr.column(smpl(k)).elem(k),
-					pc.page(smpl(k)).column(k),pd.page(smpl(k)).column(k),
-					R.column(k),v.page(smpl(k)).column(k));
+				// Find optimal value function and 
+				// compute post-decision asset level
+				ret = solveOpt(
+					g.column(smpl(k)).elem(k), r.column(smpl(k)).elem(k),
+					pg.column(smpl(k)).elem(k), pr.column(smpl(k)).elem(k),
+					pc.page(smpl(k)).column(k), pd.page(smpl(k)).column(k),
+					R.column(k), v.page(smpl(k)).column(k)
+				);
 				
 				Rx.insert(ret.Rx, 0, k);
 				xc.insert(ret.xc, 0, k);
@@ -151,17 +134,19 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho,g,r,P,S,numI,T")
 				octave_int32 index = 0;
 				for (int m=0; m<numSfin; m++)
 				{
-					NV(index+Rx(m,k),k,smpl(k)) = NV.page(smpl(k)).column(k).elem(index+Rx(m,k))+(octave_int32)1;
+					NV(index+Rx(m, k), k, smpl(k)) = NV.page(smpl(k)).column(k).elem(index+Rx(m, k))+(octave_int32)1;
 					index = index+numR(m);
 				}
 				
 				if (k < numN-1)
 				{
 					// Observe sample slopes
-					ret = solveOpt(g.column(smpl(k+1)).elem(k+1),r.column(smpl(k+1)).elem(k+1),
+					ret = solveOpt(
+						g.column(smpl(k+1)).elem(k+1),r.column(smpl(k+1)).elem(k+1),
 						pg.column(smpl(k+1)).elem(k+1),pr.column(smpl(k+1)).elem(k+1),
 						pc.page(smpl(k+1)).column(k+1),pd.page(smpl(k+1)).column(k+1),
-						Rx.column(k),v.page(smpl(k+1)).column(k+1));
+						Rx.column(k),v.page(smpl(k+1)).column(k+1)
+					);
 					
 					int32NDArray Rxlo(dim_vector(numSfin,1));
 					int32NDArray Rxup(dim_vector(numSfin,1));
@@ -176,10 +161,12 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho,g,r,P,S,numI,T")
 						{
 							Rxup(m) = Rx(m,k)+(octave_int32)1;
 							
-							retup = solveOpt(g.column(smpl(k+1)).elem(k+1),r.column(smpl(k+1)).elem(k+1),
-								pg.column(smpl(k+1)).elem(k+1),pr.column(smpl(k+1)).elem(k+1),
-								pc.page(smpl(k+1)).column(k+1),pd.page(smpl(k+1)).column(k+1),
-								Rxup,v.page(smpl(k+1)).column(k+1));
+							retup = solveOpt(
+								g.column(smpl(k+1)).elem(k+1), r.column(smpl(k+1)).elem(k+1),
+								pg.column(smpl(k+1)).elem(k+1), pr.column(smpl(k+1)).elem(k+1),
+								pc.page(smpl(k+1)).column(k+1), pd.page(smpl(k+1)).column(k+1),
+								Rxup, v.page(smpl(k+1)).column(k+1)
+							);
 							
 							vhatlo(m) = (octave_int32)0;
 //							vhatlo(m) = ret.F;
@@ -187,12 +174,14 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho,g,r,P,S,numI,T")
 						}
 						else if (Rx(m,k) == numR(m)-(octave_int32)1)
 						{
-							Rxlo(m) = Rx(m,k)-(octave_int32)1;
+							Rxlo(m) = Rx(m, k)-(octave_int32)1;
 							
-							retlo = solveOpt(g.column(smpl(k+1)).elem(k+1),r.column(smpl(k+1)).elem(k+1),
-								pg.column(smpl(k+1)).elem(k+1),pr.column(smpl(k+1)).elem(k+1),
-								pc.page(smpl(k+1)).column(k+1),pd.page(smpl(k+1)).column(k+1),
-								Rxlo,v.page(smpl(k+1)).column(k+1));
+							retlo = solveOpt(
+								g.column(smpl(k+1)).elem(k+1), r.column(smpl(k+1)).elem(k+1),
+								pg.column(smpl(k+1)).elem(k+1), pr.column(smpl(k+1)).elem(k+1),
+								pc.page(smpl(k+1)).column(k+1), pd.page(smpl(k+1)).column(k+1),
+								Rxlo, v.page(smpl(k+1)).column(k+1)
+							);
 							
 							vhatlo(m) = ret.F-retlo.F;
 							vhatup(m) = (octave_int32)0;
@@ -202,77 +191,60 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho,g,r,P,S,numI,T")
 							Rxlo(m) = Rx(m,k)-(octave_int32)1;
 							Rxup(m) = Rx(m,k)+(octave_int32)1;
 							
-							retlo = solveOpt(g.column(smpl(k+1)).elem(k+1),r.column(smpl(k+1)).elem(k+1),
-								pg.column(smpl(k+1)).elem(k+1),pr.column(smpl(k+1)).elem(k+1),
-								pc.page(smpl(k+1)).column(k+1),pd.page(smpl(k+1)).column(k+1),
-								Rxlo,v.page(smpl(k+1)).column(k+1));
-							retup = solveOpt(g.column(smpl(k+1)).elem(k+1),r.column(smpl(k+1)).elem(k+1),
-								pg.column(smpl(k+1)).elem(k+1),pr.column(smpl(k+1)).elem(k+1),
-								pc.page(smpl(k+1)).column(k+1),pd.page(smpl(k+1)).column(k+1),
-								Rxup,v.page(smpl(k+1)).column(k+1));
+							retlo = solveOpt(
+								g.column(smpl(k+1)).elem(k+1), r.column(smpl(k+1)).elem(k+1),
+								pg.column(smpl(k+1)).elem(k+1), pr.column(smpl(k+1)).elem(k+1),
+								pc.page(smpl(k+1)).column(k+1), pd.page(smpl(k+1)).column(k+1),
+								Rxlo, v.page(smpl(k+1)).column(k+1)
+							);
+							retup = solveOpt(
+								g.column(smpl(k+1)).elem(k+1), r.column(smpl(k+1)).elem(k+1),
+								pg.column(smpl(k+1)).elem(k+1), pr.column(smpl(k+1)).elem(k+1),
+								pc.page(smpl(k+1)).column(k+1), pd.page(smpl(k+1)).column(k+1),
+								Rxup, v.page(smpl(k+1)).column(k+1)
+							);
 							
 							vhatlo(m) = ret.F-retlo.F;
 							vhatup(m) = retup.F-ret.F;
 						}
 						
-//						printf("ret.F=%f\n",ret.F);
-//						printf("retlo.F=%f\n",retlo.F);
-//						printf("retup.F=%f\n",retup.F);
-//						printf("vhatlo(%i)=%f\n",m,vhatlo(m));
-//						printf("vhatup(%i)=%f\n",m,vhatup(m));
-						
 						// Update slopes
 						// Calculate alpha
-						alpha = 1/(float)NV.page(smpl(k)).column(k).elem(index+Rx(m,k));
+						alpha = 1/(float)NV.page(smpl(k)).column(k).elem(index+Rx(m, k));
 						
 						// Calculate z
-						zlo(m) = (1-alpha)*v.page(smpl(k)).column(k).elem(index+Rx(m,k))+alpha*vhatlo(m);
+						zlo(m) = (1-alpha)*v.page(smpl(k)).column(k).elem(index+Rx(m, k))+alpha*vhatlo(m);
 						
-						if (Rx(m,k)+(octave_int32)1 < numR(m)-(octave_int32)1)
+						if (Rx(m, k)+(octave_int32)1 < numR(m)-(octave_int32)1)
 						{
-							zup(m) = (1-alpha)*v.page(smpl(k)).column(k).elem(index+Rx(m,k)+(octave_int32)1)+alpha*vhatup(m);
+							zup(m) = (1-alpha)*v.page(smpl(k)).column(k).elem(index+Rx(m, k)+(octave_int32)1)+alpha*vhatup(m);
 						}
 						else
 						{
 							zup(m) = vhatup(m);
 						}
 						
-//						printf("zlo=%f\n",(float)zlo(m));
-//						printf("zup=%f\n",(float)zup(m));
-						
 						// Projection operation
-						v(index+Rx(m,k),k,smpl(k)) = zlo(m);
+						v(index+Rx(m, k),k,smpl(k)) = zlo(m);
 						
-						if (Rx(m,k)+(octave_int32)1 < numR(m)-(octave_int32)1)
+						if (Rx(m, k)+(octave_int32)1 < numR(m)-(octave_int32)1)
 						{
-							v(index+Rx(m,k)+(octave_int32)1,k,smpl(k)) = zup(m);
+							v(index+Rx(m, k)+(octave_int32)1,k,smpl(k)) = zup(m);
 						}
 						
 						for (octave_int32 level=0; level<numR(m); level=level+(octave_int32)1)
 						{
-							if (level < Rx(k) and v.page(smpl(k)).column(k).elem(index+level) <= zlo(m))
+							if (level < Rx(m, k) and 
+								v.page(smpl(k)).column(k).elem(index+level) <= zlo(m))
 							{
-								v(index+level,k,smpl(k)) = zlo(m);
+								v(index+level, k, smpl(k)) = zlo(m);
 							}
-							else if (level > (Rx(m,k)+(octave_int32)1) and v.page(smpl(k)).column(k).elem(index+level) >= zup(m))
+							else if (level > (Rx(m, k)+(octave_int32)1) and 
+								v.page(smpl(k)).column(k).elem(index+level) >= zup(m))
 							{
-								v(index+level,k,smpl(k)) = zup(m);
+								v(index+level, k, smpl(k)) = zup(m);
 							}
 						} // endfor level
-						
-//						printf("v=");
-//						for(int d1=0; d1<numW; d1++)
-//						{
-//							for(int d2=0; d2<numN; d2++)
-//							{
-//								for(int d3=0; d3<(int)numR.sum(1).elem(0); d3++)
-//								{
-//									printf("%f ",v(d3,d2,d1));
-//								}
-//								printf("\n");
-//							}
-//							printf("\n");
-//						}
 						
 						index = index+numR(m);
 					} // endfor numSfin
@@ -285,8 +257,8 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho,g,r,P,S,numI,T")
 		{
 			for (int k=0; k<numN; k++)
 			{
-				uc(m,k) = ((float)xc(m,k)+1)/rho;
-				ud(m,k) = ((float)xd(m,k)+1)/rho;
+				uc(m, k) = ((float)xc(m, k)+1)/rho;
+				ud(m, k) = ((float)xd(m, k)+1)/rho;
 			}
 		}
 		
@@ -294,7 +266,7 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho,g,r,P,S,numI,T")
 		{
 			for (int k=0; k<numN; k++)
 			{
-				q(m,k) = ((float)R(m,k)+1)/rho;
+				q(m, k) = ((float)R(m, k)+1)/rho;
 			}
 		}
 		
@@ -332,7 +304,7 @@ void init(octave_scalar_map S)
 	
 	// Number of ressources
 	numS = Qmax.nelem();
-	set_fin = int32NDArray(dim_vector(numS,1), 0);
+	set_fin = int32NDArray(dim_vector(numS, 1), 0);
 	
 	int count = 0;
 	for (int k=0; k<numS; k++)
@@ -346,10 +318,10 @@ void init(octave_scalar_map S)
 	numSfin = set_fin.sum(0).elem(0);
 	numR = int32NDArray(dim_vector(numSfin,1));
 	
-	R = int32NDArray(dim_vector(numSfin,numN), 0); // Pre-decision asset level
-	Rx = int32NDArray(dim_vector(numSfin,numN), 0); // Post-decision asset level
-	xc = int32NDArray(dim_vector(numS,numN), 0);
-	xd = int32NDArray(dim_vector(numS,numN), 0);
+	R = int32NDArray(dim_vector(numSfin, numN), 0); // Pre-decision asset level
+	Rx = int32NDArray(dim_vector(numSfin, numN), 0); // Post-decision asset level
+	xc = int32NDArray(dim_vector(numS, numN), 0);
+	xd = int32NDArray(dim_vector(numS, numN), 0);
 	
 	count = 0;
 	for (int k=0; k<numS; k++)
@@ -441,13 +413,10 @@ void initOpt(void)
 		if ((int)set_fin(m-1) == 1)
 		{
 			// Reset the val vector to 0
-//			printf("ind=");
 			for (int n=1; n<=2*numS+numV; n++)
 			{
 				val[n] = 0;
-//				printf("%i ",ind[n]);
 			}
-//			printf("\n");
 			
 			val[m] = -1; // -uc
 			val[numS+m] = 1; // ud
@@ -494,26 +463,27 @@ void initOpt(void)
 }
 
 /* --------------------------------------------------------------------------- *
- * opt_sol solveOpt(int g, int r, int pg, int pr, int32NDArray pc,             *
- *  int32NDArray pd, int32NDArray R, FloatNDArray v)                           *
+ * opt_sol solveOpt(int g, int r, int pg, int pr,                              *
+ *  int32NDArray pc, int32NDArray pd, int32NDArray R, FloatNDArray v)          *
  * --------------------------------------------------------------------------- *
  * Solving the linear programming problem.
  *
- *    | Description                                               | Size
+ *    | Description                                             | Size
  * ----------------------------------------------------------------------------
- * g  | Generated energy (node input to satisfie).                | 1 x 1
- * r  | Requested energy (node output to satisfie).               | 1 x 1
- * pg | Price of one amount of generated enery.                   | 1 x 1
- * pr | Price of one amount of requested enery.                   | 1 x 1
- * pc | Price vector for charge vaiables of all resources.        | numS x 1
- * pd | Price vector for discharge vaiables of all resources.     | numS x 1
- * R  | Resource level vector for all the finite capacities.      | numSfin x 1
- * v  | Piecewise value function approximation for every level    | sum(numR) x 1
- *    | step.                                                     |
+ * g  | Generated energy (node input to satisfie).              | 1 x 1
+ * r  | Requested energy (node output to satisfie).             | 1 x 1
+ * pg | Price of one amount of generated enery.                 | 1 x 1
+ * pr | Price of one amount of requested enery.                 | 1 x 1
+ * pc | Price vector for charge vaiables of all resources.      | numS x 1
+ * pd | Price vector for discharge vaiables of all resources.   | numS x 1
+ * R  | Resource level vector for all the finite capacities.    | numSfin x 1
+ * v  | Piecewise value function approximation for every level  | sum(numR) x 1
+ *    | step.                                                   |
  *
  */
 
-opt_sol solveOpt(int g, int r, int pg, int pr, int32NDArray pc, int32NDArray pd, int32NDArray R, FloatNDArray v)
+opt_sol solveOpt(int g, int r, int pg, int pr,
+	int32NDArray pc, int32NDArray pd, int32NDArray R, FloatNDArray v)
 {
 	opt_sol retval;
 	retval.Rx = int32NDArray(dim_vector(numSfin, 1));
@@ -532,16 +502,11 @@ opt_sol solveOpt(int g, int r, int pg, int pr, int32NDArray pc, int32NDArray pd,
 		
 		if ((int)set_fin(m-1) == 1)
 		{
-//			printf("v=");
 			for (int k=1; k<=(int)numR(m-1); k++)
 			{
 				glp_set_obj_coef(lp, 2*numS+index+k, v(index+k-1));
-//				printf("%f ",v(index+k-1));
 			}
 			index = index+(int)numR(m-1);
-//			printf("\n");
-//			printf("numR=%i\n",(int)numR(m-1));
-//			printf("v.dims=%i\n",(int)v.dims().elem(0));
 			
 			// Value function constraint
 			// -uc+ud+sum{r = 0..numR-1}ytr = R
@@ -566,33 +531,21 @@ opt_sol solveOpt(int g, int r, int pg, int pr, int32NDArray pc, int32NDArray pd,
 	ret = glp_simplex(lp, &parm);
 	if (ret != 0)
 	{
-		printf("No simplex solution. Error number: %i\n", ret);
+		printf("No simplex solution. Error %i\n", ret);
 	}
 	
 	retval.F = glp_get_obj_val(lp)+g*pg+r*pr;
-//	printf("F=%f\n",glp_get_obj_val(lp)+g*pg+r*pr);
 	
 	count = 0;
-//	index = 0;
 	for (int m=1; m<=numS; m++)
 	{
-//		printf("uc_%i=%i\n",m,(int)glp_get_col_prim(lp,m));
-//		printf("ud_%i=%i\n",m,(int)glp_get_col_prim(lp,numS+m));
 		
-		retval.xc(m-1) = floor(glp_get_col_prim(lp,m));
-		retval.xd(m-1) = floor(glp_get_col_prim(lp,numS+m));
+		retval.xc(m-1) = floor(glp_get_col_prim(lp, m));
+		retval.xd(m-1) = floor(glp_get_col_prim(lp, numS+m));
 		
 		if ((int)set_fin(m-1) == 1)
 		{
-			Rxerr(count) = floor(nul(m-1)*(float)R(count)+T*(nuc(m-1)*glp_get_col_prim(lp,m)-(1/nud(m-1))*glp_get_col_prim(lp,numS+m)));
-//			printf("Rxerr=%i\n",(int)Rxerr(count));
-//			printf("y_%i=",count+1);
-//			for(int d1=1; d1<=(int)numR(count); d1++)
-//			{
-//				printf("%f ",glp_get_col_prim(lp,2*numS+index+d1));
-//			}
-//			printf("\n");
-//			index = index+(int)numR(count);
+			Rxerr(count) = floor(nul(m-1)*(float)R(count)+T*(nuc(m-1)*glp_get_col_prim(lp, m)-(1/nud(m-1))*glp_get_col_prim(lp, numS+m)));
 			
 			if ((int)Rxerr(count) < 0)
 			{
@@ -618,6 +571,10 @@ opt_sol solveOpt(int g, int r, int pg, int pr, int32NDArray pc, int32NDArray pd,
  * ----------------------------------------------------------------------------*
  * Deleting the linear programming problem.
  *
+ * @param void
+ *
+ * @return void
+ *
  */
 
 void deleteOpt(void)
@@ -626,24 +583,30 @@ void deleteOpt(void)
 }
 
 /* ----------------------------------------------------------------------------*
- * int32NDArray randi(int start, int end, int number)                          *
+ * int32NDArray randi(int min, int max, int length)                            *
  * ----------------------------------------------------------------------------*
  * Generating random integer vector.
  *
+ * @param min Minimal number of random vector.
+ * @param max Maximal number of random vector.
+ * @param length Length of the random integer vector.
+ *
+ * @return Vector with length <length> random integers between <min> and <max>.
+ *
  */
 
-int32NDArray randi(int start, int end, int number)
+int32NDArray randi(int min, int max, int length)
 {
 	dim_vector dv;
-	dv(0) = number;
+	dv(0) = length;
 	dv(1) = 1;
 	int32NDArray sample(dv);
-
-	for (int k=0; k<number; k++)
+	
+	for (int k=0; k<length; k++)
 	{
-		sample(k) = floor(rand()%end+start);
+		sample(k) = floor((min+(max+1-min)*rand()/RAND_MAX));
 	}
-
+	
 	return sample;
 }
 
@@ -651,6 +614,11 @@ int32NDArray randi(int start, int end, int number)
  * int32NDArray scale(NDArray S, float s)                                      *
  * ----------------------------------------------------------------------------*
  * Scaling an array by a float number.
+ *
+ * @param S Array to scale.
+ * @param s Scale factor.
+ *
+ * @return Array of integers scaled with factor s.
  *
  */
 

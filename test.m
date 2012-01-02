@@ -40,7 +40,7 @@ P.pd=zeros(numS,numN,numW);
 P.pd(4,:,:)=p;
 
 
-%mkoctfile SPARoptimalNStorage.cc -lglpk
+mkoctfile SPARoptimalNStorage.cc -lglpk
 tic;
 [q,uc,ud]=SPARoptimalNStorage(rho,g,r,P,S,numI,T);
 toc;
