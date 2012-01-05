@@ -1,22 +1,22 @@
 clear all;
 close all;
 
-numN=100;
+numN=10;
 T=1;
 n=0:numN-1;
 t=n*T;
 
-numI=100;
-rho=100;
+numI=10;
+rho=10;
 
-S.Qmax=[4,3,1,Inf];
-S.Qmin=[0,0,0,0];
-S.q0=[3,2,0.5,Inf];
-S.C=[0.1,0.3,0.6,10];
-S.D=[0.1,0.3,0.6,10];
-S.nul=[1,1,1,1];
-S.nuc=[1,1,1,1];
-S.nud=[1,1,1,1];
+S.Qmax=[4,Inf];
+S.Qmin=[0,0];
+S.q0=[3,Inf];
+S.C=[0.4,10];
+S.D=[0.4,10];
+S.nul=[1,1];
+S.nuc=[1,1];
+S.nud=[1,1];
 
 numS=length(S.Qmax);
 numW=1;
@@ -35,9 +35,9 @@ endfor
 P.pg=zeros(numN,numW);
 P.pr=zeros(numN,numW);
 P.pc=zeros(numS,numN,numW);
-P.pc(4,:,:)=p;
+P.pc(2,:,:)=p;
 P.pd=zeros(numS,numN,numW);
-P.pd(4,:,:)=p;
+P.pd(2,:,:)=p;
 
 mkoctfile SPARoptimalNStorage.cc -lglpk
 tic;
@@ -45,7 +45,8 @@ tic;
 toc;
 
 figure(1)
-plot(t,r,t,g,t,g-uc(1,:)'-uc(2,:)'-uc(3,:)'+ud(1,:)'+ud(2,:)'+ud(3,:)',t,ud(4,:)'-uc(4,:)')
+%plot(t,r,t,g,t,g-uc(1,:)'-uc(2,:)'-uc(3,:)'+ud(1,:)'+ud(2,:)'+ud(3,:)',t,ud(4,:)'-uc(4,:)')
+plot(t,r,t,g,t,g-uc(1,:)'+ud(1,:)',t,ud(2,:)'-uc(2,:)')
 legend("Nachfrage","Produktion ohne Speicher","Produktion mit Speicher","Netz")
 grid on
 
@@ -54,5 +55,6 @@ grid on
 %grid on
 
 figure(3)
-plot(t,q(1,:),t,q(2,:),t,q(3,:))
+%plot(t,q(1,:),t,q(2,:),t,q(3,:))
+plot(t,q(1,:))
 grid on

@@ -11,7 +11,6 @@ using namespace std;
 struct opt_sol
 {
 	float F;
-	int32NDArray Rx;
 	int32NDArray xc;
 	int32NDArray xd;
 };
@@ -63,7 +62,7 @@ int32NDArray scale(NDArray S, float s);
  * @param numI Number of Iterations.
  * @param T Time step size.
  *
- * @return q, uc, ud
+ * @return q, uc, ud, cost
  *
  */ 
 
@@ -76,6 +75,8 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 	else
 	{
 		rho = args(0).float_value();
+		FloatNDArray g_f = args(1).array_value();
+		FloatNDArray r_f = args(2).array_value();
 		int32NDArray g = scale(args(1).array_value(), rho);
 		int32NDArray r = scale(args(2).array_value(), rho);
 		octave_scalar_map P = args(3).scalar_map_value();
@@ -89,6 +90,11 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 		int32NDArray pc = scale(P.contents("pc").array_value(), rho);
 		int32NDArray pd = scale(P.contents("pd").array_value(), rho);
 		
+		FloatNDArray pg_f = P.contents("pg").array_value();
+		FloatNDArray pr_f = P.contents("pr").array_value();
+		FloatNDArray pc_f = P.contents("pc").array_value();
+		FloatNDArray pd_f = P.contents("pd").array_value();
+		
 		numN = g.dims().elem(0);
 		numW = g.dims().elem(1);
 		
@@ -99,7 +105,7 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 		
 		int32NDArray smpl;
 		FloatNDArray v(dv_v, 0); // Value function for the different levels
-		int32NDArray NV(dv_v, 1); // Number of visits to the corresponding state
+		int32NDArray NV(dv_v, 0); // Number of visits to the corresponding state
 		opt_sol ret, retlo, retup;
 		FloatNDArray vhatlo(dim_vector(numSfin, 1));
 		FloatNDArray vhatup(dim_vector(numSfin, 1));
@@ -110,6 +116,7 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 		FloatNDArray q(dim_vector(numSfin, numN));
 		FloatNDArray uc(dim_vector(numS, numN));
 		FloatNDArray ud(dim_vector(numS, numN));
+		FloatNDArray cost(dim_vector(numN, 1), 0);
 		
 		for (int i=0; i<numI; i++)
 		{
@@ -129,9 +136,33 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 					R.column(k), v.page(smpl(k)).column(k)
 				);
 				
-				Rx.insert(ret.Rx, 0, k);
 				xc.insert(ret.xc, 0, k);
 				xd.insert(ret.xd, 0, k);
+				
+				float Rxerr;
+				int count = 0;
+				for (int m=0; m<numS; m++)
+				{
+					if ((int)set_fin(m) == 1)
+					{
+						// Resource transition function
+						Rxerr = nul(m)*(float)R.column(k).elem(count)+T*(nuc(m)*(float)xc.column(k).elem(m)-(1/nud(m))*(float)xd.column(k).elem(m));
+						
+						if (Rxerr < floor(rho*Qmin(m)))
+						{
+//							printf("Warning - Negative index: Rxerr=%f\n", Rxerr);
+							Rx(count, k) = floor(rho*Qmin(m));
+						}
+						else if (Rxerr > floor(rho*Qmax(m)))
+						{
+//							printf("Warning - Too big index: Rxerr=%f\n", Rxerr);
+							Rx(count, k) = floor(rho*Qmax(m));
+						}
+						else Rx(count, k) = floor(Rxerr);
+						
+						count = count+1;
+					}
+				}
 				
 				// Count number of visits
 				octave_int32 index = 0;
@@ -228,26 +259,32 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 						}
 						
 						// Projection operation
-						v(index+Rx(m, k),k,smpl(k)) = zlo(m);
+						// set new value for Rx
+						v(index+Rx(m, k), k, smpl(k)) = zlo(m);
 						
+						// set new value for Rx+1
 						if (Rx(m, k)+(octave_int32)1 < numR(m)-(octave_int32)1)
 						{
-							v(index+Rx(m, k)+(octave_int32)1,k,smpl(k)) = zup(m);
+							v(index+Rx(m, k)+(octave_int32)1, k, smpl(k)) = zup(m);
 						}
 						
-						for (octave_int32 level=0; level<numR(m); level=level+(octave_int32)1)
+						// regain monoton decrease
+						if (Rx(m, k)-(octave_int32)1 > (octave_int32)0 and 
+							v.page(smpl(k)).column(k).elem(index+Rx(m, k)-(octave_int32)1) < zlo(m))
 						{
-							if (level < Rx(m, k) and 
-								v.page(smpl(k)).column(k).elem(index+level) <= zlo(m))
+							for (octave_int32 level=0; level<Rx(m, k)-(octave_int32)1; level=level+(octave_int32)1)
 							{
 								v(index+level, k, smpl(k)) = zlo(m);
 							}
-							else if (level > (Rx(m, k)+(octave_int32)1) and 
-								v.page(smpl(k)).column(k).elem(index+level) >= zup(m))
+						}
+						else if (Rx(m, k)+(octave_int32)2 < numR(m)-(octave_int32)1 and 
+							v.page(smpl(k)).column(k).elem(index+Rx(m, k)+(octave_int32)2) > zup(m))
+						{
+							for (octave_int32 level=Rx(m, k)+(octave_int32)2; level<numR(m)-(octave_int32)1; level=level+(octave_int32)1)
 							{
 								v(index+level, k, smpl(k)) = zup(m);
 							}
-						} // endfor level
+						}
 						
 						index = index+numR(m);
 					} // endfor numSfin
@@ -256,26 +293,37 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 		} // endfor iter
 		
 		// Rescale return value
-		for (int m=0; m<numS; m++)
+		for (int k=0; k<numN; k++)
 		{
-			for (int k=0; k<numN; k++)
+			for (int m=0; m<numS; m++)
 			{
-				uc(m, k) = ((float)xc(m, k)+1)/rho;
-				ud(m, k) = ((float)xd(m, k)+1)/rho;
+				uc(m, k) = (float)xc(m, k)/rho;
+				ud(m, k) = (float)xd(m, k)/rho;
+				
+				cost(k) = cost(k)+uc(m, k)*pc_f(m, k)+ud(m, k)*pd_f(m, k);
 			}
+			cost(k) = cost(k)+g_f(k)*pg_f(k)+r_f(k)*pr_f(k);
 		}
 		
-		for (int m=0; m<numSfin; m++)
+		for (int k=0; k<numN; k++)
 		{
-			for (int k=0; k<numN; k++)
+			for (int m=0; m<numSfin; m++)
 			{
-				q(m, k) = ((float)R(m, k)+1)/rho;
+				if(k == 0)
+				{
+					q(m, k) = q0(m);
+				}
+				else
+				{
+					q(m, k) = (float)Rx(m, k)/rho;
+				}
 			}
 		}
 		
 		retval(0) = octave_value(q);
 		retval(1) = octave_value(uc);
 		retval(2) = octave_value(ud);
+		retval(3) = octave_value(cost);
 		
 		deleteOpt();
 	}
@@ -331,8 +379,8 @@ void init(octave_scalar_map S)
 	{
 		if ((int)set_fin(k) == 1)
 		{
-			numR(count) = floor(rho*Qmax(k)); // Scale max capacity
-			R(count,0) = floor(rho*q0(k))-1; // Storage level initialization; TODO checking for q0 <= Qmax
+			numR(count) = floor(rho*Qmax(k))+1; // Scale max capacity
+			R(count,0) = floor(rho*q0(k)); // Storage level initialization; TODO checking for q0 <= Qmax
 			count = count+1;
 		}
 	}
@@ -488,13 +536,11 @@ opt_sol solveOpt(int g, int r, int pg, int pr,
 	int32NDArray pc, int32NDArray pd, int32NDArray R, FloatNDArray v)
 {
 	opt_sol retval;
-	retval.Rx = int32NDArray(dim_vector(numSfin, 1));
 	retval.xc = int32NDArray(dim_vector(numS, 1));
 	retval.xd = int32NDArray(dim_vector(numS, 1));
 	int index = 0;
 	int count = 1;
 	int ret;
-	int32NDArray Rxerr(dim_vector(numSfin, 1));
 	
 	// Objectiv coefficient
 	for (int m=1; m<=numS; m++)
@@ -512,11 +558,11 @@ opt_sol solveOpt(int g, int r, int pg, int pr,
 			
 			// Value function constraint
 			// -uc+ud+sum{r = 0..numR-1}ytr = R
-			glp_set_row_bnds(lp, 1+count, GLP_FX, (int)R(count-1)+1, (int)R(count-1)+1);
+			glp_set_row_bnds(lp, 1+count, GLP_FX, (int)R(count-1), (int)R(count-1));
 			
 			// Minimum and Maximum capacity constraint
 			// Qmin-R <= uc-ud <= Qmax-R
-			glp_set_row_bnds(lp, 1+numSfin+count, GLP_DB, floor(rho*(float)Qmin(m-1))-(int)R(count-1)+1, (int)numR(count-1)-(int)R(count-1)+1);
+			glp_set_row_bnds(lp, 1+numSfin+count, GLP_DB, floor(rho*Qmin(m-1))-(int)R(count-1), floor(rho*Qmax(m-1))-(int)R(count-1));
 			
 			count = count+1;
 		}
@@ -538,31 +584,11 @@ opt_sol solveOpt(int g, int r, int pg, int pr,
 	
 	retval.F = glp_get_obj_val(lp)+g*pg+r*pr;
 	
-	count = 0;
 	for (int m=1; m<=numS; m++)
 	{
 		
 		retval.xc(m-1) = floor(glp_get_col_prim(lp, m));
 		retval.xd(m-1) = floor(glp_get_col_prim(lp, numS+m));
-		
-		if ((int)set_fin(m-1) == 1)
-		{
-			Rxerr(count) = floor(nul(m-1)*(float)R(count)+T*(nuc(m-1)*glp_get_col_prim(lp, m)-(1/nud(m-1))*glp_get_col_prim(lp, numS+m)));
-			
-			if ((int)Rxerr(count) < 0)
-			{
-				retval.Rx(count) = 0;
-				printf("solveOpt Warning: Negative index: Rxerr=%i\n",(int)Rxerr(count));
-			}
-			else if ((int)Rxerr(count) > (int)numR(count)-1)
-			{
-				retval.Rx(count) = (int)numR(count)-1;
-				printf("solveOpt Warning: Too big index: Rxerr=%i\n",(int)Rxerr(count));
-			}
-			else retval.Rx(count) = Rxerr(count);
-			
-			count = count+1;
-		}
 	}
 	
 	return retval;
