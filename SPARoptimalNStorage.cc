@@ -44,7 +44,7 @@ int32NDArray set_fin;
 
 void init(octave_scalar_map S);
 void initOpt(void);
-opt_sol solveOpt(int g, int r, int pg, int pr, int32NDArray pc, int32NDArray pd, int32NDArray R, FloatNDArray v);
+opt_sol solveOpt(float g, float r, float pg, float pr, FloatNDArray pc, FloatNDArray pd, int32NDArray R, FloatNDArray v);
 void deleteOpt(void);
 int32NDArray randi(int start, int end, int number);
 int32NDArray scale(NDArray S, float s);
@@ -75,25 +75,18 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 	else
 	{
 		rho = args(0).float_value();
-		FloatNDArray g_f = args(1).array_value();
-		FloatNDArray r_f = args(2).array_value();
-		int32NDArray g = scale(args(1).array_value(), rho);
-		int32NDArray r = scale(args(2).array_value(), rho);
+		FloatNDArray g = args(1).array_value();
+		FloatNDArray r = args(2).array_value();
 		octave_scalar_map P = args(3).scalar_map_value();
 		octave_scalar_map S = args(4).scalar_map_value();
 		int numI = args(5).int_value();
 		T = args(6).float_value();
 		
 		// Prices
-		int32NDArray pg = scale(P.contents("pg").array_value(), rho);
-		int32NDArray pr = scale(P.contents("pr").array_value(), rho);
-		int32NDArray pc = scale(P.contents("pc").array_value(), rho);
-		int32NDArray pd = scale(P.contents("pd").array_value(), rho);
-		
-		FloatNDArray pg_f = P.contents("pg").array_value();
-		FloatNDArray pr_f = P.contents("pr").array_value();
-		FloatNDArray pc_f = P.contents("pc").array_value();
-		FloatNDArray pd_f = P.contents("pd").array_value();
+		FloatNDArray pg = P.contents("pg").array_value();
+		FloatNDArray pr = P.contents("pr").array_value();
+		FloatNDArray pc = P.contents("pc").array_value();
+		FloatNDArray pd = P.contents("pd").array_value();
 		
 		numN = g.dims().elem(0);
 		numW = g.dims().elem(1);
@@ -281,7 +274,7 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 							}
 							else
 							{
-//								float vmean = (v((int)index+level+1, k, smpl(k))+(level-(int)Rx(m, k))*v((int)index+level, k, smpl(k)))/(level-(int)Rx(m, k)+1);
+//								float vmean = (v((int)index+level+1, k, smpl(k))+(level-(int)Rx(m, k))*v((int)index+level, k, smpl(k)))/(level-(int)Rx(m, k)-1);
 								for (int i=(int)Rx(m, k); i<=level+1; i++)
 								{
 									v((int)index+i, k, smpl(k)) = vhatup(m);
@@ -303,9 +296,9 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 				uc(m, k) = xc(m, k)/rho;
 				ud(m, k) = xd(m, k)/rho;
 				
-				cost(k) = cost(k)+uc(m, k)*pc_f(m, k)+ud(m, k)*pd_f(m, k);
+				cost(k) = cost(k)+uc(m, k)*pc(m, k)+ud(m, k)*pd(m, k);
 			}
-			cost(k) = cost(k)+g_f(k)*pg_f(k)+r_f(k)*pr_f(k);
+			cost(k) = cost(k)+g(k)*pg(k)+r(k)*pr(k);
 		}
 		
 		for (int k=0; k<numN; k++)
@@ -528,8 +521,8 @@ void initOpt(void)
  *
  */
 
-opt_sol solveOpt(int g, int r, int pg, int pr,
-	int32NDArray pc, int32NDArray pd, int32NDArray R, FloatNDArray v)
+opt_sol solveOpt(float g, float r, float pg, float pr,
+	FloatNDArray pc, FloatNDArray pd, int32NDArray R, FloatNDArray v)
 {
 	opt_sol retval;
 	retval.xc = FloatNDArray(dim_vector(numS, 1));
@@ -541,8 +534,8 @@ opt_sol solveOpt(int g, int r, int pg, int pr,
 	// Objectiv coefficient
 	for (int m=1; m<=numS; m++)
 	{
-		glp_set_obj_coef(lp, m, -pc(m-1)); // -pc*uc
-		glp_set_obj_coef(lp, numS+m, -pd(m-1)); // -pd*ud
+		glp_set_obj_coef(lp, m, -rho*pc(m-1)); // -pc*uc
+		glp_set_obj_coef(lp, numS+m, -rho*pd(m-1)); // -pd*ud
 		
 		if ((int)set_fin(m-1) == 1)
 		{
@@ -558,8 +551,8 @@ opt_sol solveOpt(int g, int r, int pg, int pr,
 			
 			// Minimum and Maximum capacity constraint
 			// Qmin-R <= uc-ud <= Qmax-R
-			glp_set_row_bnds(lp, 1+numSfin+count, GLP_DB, ((float)Qmin(m-1)*rho-nul(m-1)*(float)R(count-1))/T,
-				((float)Qmax(m-1)*rho-nul(m-1)*(float)R(count-1))/T);
+			glp_set_row_bnds(lp, 1+numSfin+count, GLP_DB, (rho*Qmin(m-1)-nul(m-1)*(float)R(count-1))/T,
+				(rho*Qmax(m-1)-nul(m-1)*(float)R(count-1))/T);
 			
 			count = count+1;
 		}
@@ -567,7 +560,7 @@ opt_sol solveOpt(int g, int r, int pg, int pr,
 	
 	// Node balance constraint
 	// uc-ud = g-r
-	glp_set_row_bnds(lp, 1, GLP_FX, g-r, g-r);
+	glp_set_row_bnds(lp, 1, GLP_FX, rho*(g-r), rho*(g-r));
 	
 //	glp_write_lp(lp, NULL, "linearSystem.lp");
 //	glp_write_mps(lp, GLP_MPS_FILE, NULL, "linearSystem.mps");
@@ -579,7 +572,7 @@ opt_sol solveOpt(int g, int r, int pg, int pr,
 		printf("No simplex solution. Error %i\n", ret);
 	}
 	
-	retval.F = glp_get_obj_val(lp)+g*pg+r*pr;
+	retval.F = glp_get_obj_val(lp)+rho*rho*(g*pg+r*pr);
 	
 	for (int m=1; m<=numS; m++)
 	{
