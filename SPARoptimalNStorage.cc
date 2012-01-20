@@ -422,7 +422,7 @@ void initOpt(void)
 {
 	lp = glp_create_prob();
 	int numV = (int)numR.sum(0).elem(0);
-	glp_add_rows(lp, 1+2*numSfin+numS);
+	glp_add_rows(lp, 1+2*numSfin);//+numS);
 	glp_add_cols(lp, 2*numS+numV);
 	glp_set_obj_name(lp, "profit");
 	glp_set_obj_dir(lp, GLP_MAX);
@@ -523,24 +523,23 @@ void initOpt(void)
 		}
 	}
 	
-	// Velocity of power change constraint
-	// -DeltaDmax <= ud-uc <= DeltaCmax
-	for (int m=1; m<=numS; m++)
-	{
-		// Reset the val vector to 0
-		for (int n=1; n<=2*numS+numV; n++)
-		{
-			val[n] = 0;
-		}
-		
-		val[m] = nuc(m-1); // uc
-		val[numS+m] = 1/nud(m-1); // ud
-		
-		sprintf(str, "u_change_bound_%i", m);
-		glp_set_row_name(lp, 1+2*numSfin+m, str);
-		glp_set_mat_row(lp, 1+2*numSfin+m, 2*numS+numV, ind, val);
-		glp_set_row_bnds(lp, 1+2*numSfin+m, GLP_DB, -rho*DeltaDmax(m-1), rho*DeltaCmax(m-1));
-	}
+//	// Velocity of power change constraint
+//	// -DeltaDmax <= (ud_k-uc_k)-(ud_(k-1)-uc_(k-1)) <= DeltaCmax
+//	for (int m=1; m<=numS; m++)
+//	{
+//		// Reset the val vector to 0
+//		for (int n=1; n<=2*numS+numV; n++)
+//		{
+//			val[n] = 0;
+//		}
+//		
+//		val[m] = nuc(m-1); // uc
+//		val[numS+m] = 1/nud(m-1); // ud
+//		
+//		sprintf(str, "u_change_bound_%i", m);
+//		glp_set_row_name(lp, 1+2*numSfin+m, str);
+//		glp_set_mat_row(lp, 1+2*numSfin+m, 2*numS+numV, ind, val);
+//	}
 	
 	// Display errors and warnings
 	glp_init_smcp(&parm);
@@ -604,7 +603,7 @@ opt_sol solveOpt(float g, float r, float pg, float pr,
 		{
 			for (int k=1; k<=(int)numR(m-1); k++)
 			{
-				glp_set_obj_coef(lp, 2*numS+index+k, v(index+k-1));
+				glp_set_obj_coef(lp, 2*numS+index+k, v(index+k-1)); // w*v
 			}
 			index = index+(int)numR(m-1);
 			
@@ -619,6 +618,10 @@ opt_sol solveOpt(float g, float r, float pg, float pr,
 			
 			count = count+1;
 		}
+		
+//		// Velocity of power change constraint
+//		// -DeltaDmax <= (ud_k-uc_k)-(ud_(k-1)-uc_(k-1)) <= DeltaCmax
+//		glp_set_row_bnds(lp, 1+2*numSfin+m, GLP_DB, -rho*DeltaDmax(m-1)+(xd(m-1)-xc(m-1)), rho*DeltaCmax(m-1)+(xd(m-1)-xc(m-1)));
 	}
 	
 	// Node balance constraint

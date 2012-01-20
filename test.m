@@ -12,13 +12,13 @@ rho=10;
 S.Qmax=[25,Inf];
 S.Qmin=[0,0];
 S.q0=[25,Inf];
-S.C=[15,20];
-S.D=[15,20];
+S.C=[15,30];
+S.D=[15,30];
 S.nul=[1,1];
 S.nuc=[1,1];
 S.nud=[1,1];
-S.DeltaCmax=[5,20];
-S.DeltaDmax=[5,20];
+S.DeltaCmax=[5,30];
+S.DeltaDmax=[5,30];
 
 numS=length(S.Qmax);
 numW=3;
