@@ -113,7 +113,7 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 		FloatNDArray q(dim_vector(numSfin, numN));
 		FloatNDArray uc(dim_vector(numS, numN));
 		FloatNDArray ud(dim_vector(numS, numN));
-		FloatNDArray cost(dim_vector(numN, 1), 0);
+		FloatNDArray cost(dim_vector(numN, numI), 0);
 		
 		for (int i=0; i<numI; i++)
 		{
@@ -285,10 +285,10 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 							}
 							else
 							{
-//								float vmean = (v((int)index+level-1, k, smpl(k))+((int)Rx(m, k)-level+1)*v((int)index+level, k, smpl(k)))/((int)Rx(m, k)-level+2);
+								float vmean = (v((int)index+level-1, k, smpl(k))+((int)Rx(m, k)-level+1)*v((int)index+level, k, smpl(k)))/((int)Rx(m, k)-level+2);
 								for (int j=(int)Rx(m, k); j>=level-1; j--)
 								{
-									v((int)index+j, k, smpl(k)) = vhatlo(m);
+									v((int)index+j, k, smpl(k)) = vmean;//vhatlo(m);
 								}
 							}
 						}
@@ -302,10 +302,10 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 							}
 							else
 							{
-//								float vmean = (v((int)index+level+1, k, smpl(k))+(level-(int)Rx(m, k))*v((int)index+level, k, smpl(k)))/(level-(int)Rx(m, k)-1);
+								float vmean = (v((int)index+level+1, k, smpl(k))+(level-(int)Rx(m, k))*v((int)index+level, k, smpl(k)))/(level-(int)Rx(m, k)-1);
 								for (int j=(int)Rx(m, k); j<=level+1; j++)
 								{
-									v((int)index+j, k, smpl(k)) = vhatup(m);
+									v((int)index+j, k, smpl(k)) = vmean;//vhatup(m);
 								}
 							}
 						}
@@ -314,20 +314,22 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 					} // endfor numSfin
 				} // endif
 			} // endfor k
+			
+			for (int k=0; k<numN; k++)
+			{
+				for (int m=0; m<numS; m++)
+				{
+					uc(m, k) = xc(m, k)/rho;
+					ud(m, k) = xd(m, k)/rho;
+					
+					cost(k, i) = cost(k, i)+uc(m, k)*pc(m, k)+ud(m, k)*pd(m, k);
+				}
+				cost(k, i) = cost(k, i)+g(k)*pg(k)+r(k)*pr(k);
+			}
+			
 		} // endfor iter
 		
 		// Rescale return value
-		for (int k=0; k<numN; k++)
-		{
-			for (int m=0; m<numS; m++)
-			{
-				uc(m, k) = xc(m, k)/rho;
-				ud(m, k) = xd(m, k)/rho;
-				
-				cost(k) = cost(k)+uc(m, k)*pc(m, k)+ud(m, k)*pd(m, k);
-			}
-			cost(k) = cost(k)+g(k)*pg(k)+r(k)*pr(k);
-		}
 		
 		for (int k=0; k<numN; k++)
 		{
@@ -584,13 +586,13 @@ opt_sol solveOpt(float g, float r, float pg, float pr,
 	{
 		// uc_(k-1)-DeltaCmax <= uc_k <= uc_(k-1)+DeltaCmax
 		glp_set_col_bnds(lp, m, GLP_DB,
-			fmax(0, (float)xc(m-1)-rho*DeltaCmax(m-1)),
-			fmin(rho*C(m-1), (float)xc(m-1)+rho*DeltaCmax(m-1)));
+			fmax(0, xc(m-1)-rho*DeltaCmax(m-1)),
+			fmin(rho*C(m-1), xc(m-1)+rho*DeltaCmax(m-1)));
 		
 		// ud_(k-1)-DeltaDmax <= ud_k <= ud_(k-1)+DeltaDmax
 		glp_set_col_bnds(lp, numS+m, GLP_DB,
-			fmax(0, (float)xd(m-1)-rho*DeltaDmax(m-1)),
-			fmin(rho*D(m-1), (float)xd(m-1)+rho*DeltaDmax(m-1)));
+			fmax(0, xd(m-1)-rho*DeltaDmax(m-1)),
+			fmin(rho*D(m-1), xd(m-1)+rho*DeltaDmax(m-1)));
 	}
 	
 	// Objectiv coefficient

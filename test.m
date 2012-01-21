@@ -1,24 +1,24 @@
 clear all;
 close all;
 
-numN=100;
+numN=10;
 T=1;
 n=0:numN-1;
 t=n*T;
 
-numI=100;
-rho=10;
+numI=3;
+rho=1;
 
-S.Qmax=[25,Inf];
+S.Qmax=[10,Inf];
 S.Qmin=[0,0];
-S.q0=[25,Inf];
-S.C=[15,30];
-S.D=[15,30];
+S.q0=[10,Inf];
+S.C=[5,30];
+S.D=[5,30];
 S.nul=[1,1];
 S.nuc=[1,1];
 S.nud=[1,1];
-S.DeltaCmax=[5,30];
-S.DeltaDmax=[5,30];
+S.DeltaCmax=[1,30];
+S.DeltaDmax=[1,30];
 
 numS=length(S.Qmax);
 numW=3;
