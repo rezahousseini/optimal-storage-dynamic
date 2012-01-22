@@ -6,8 +6,8 @@ T=1;
 n=0:numN-1;
 t=n*T;
 
-numI=3;
-rho=1;
+numI=10;
+rho=10;
 
 S.Qmax=[10,Inf];
 S.Qmin=[0,0];

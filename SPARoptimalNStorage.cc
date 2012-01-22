@@ -400,7 +400,7 @@ void init(octave_scalar_map S)
 	{
 		if ((int)set_fin(k) == 1)
 		{
-			numR(count) = floor(rho*Qmax(k)); // Scale max capacity
+			numR(count) = floor(rho*Qmax(k))+1; // Scale max capacity
 			R(count,0) = floor(rho*q0(k)); // Storage level initialization; TODO checking for q0 <= Qmax
 			count = count+1;
 		}
@@ -423,7 +423,7 @@ void init(octave_scalar_map S)
 void initOpt(void)
 {
 	lp = glp_create_prob();
-	int numV = (int)numR.sum(0).elem(0);
+	int numV = (int)numR.sum(0).elem(0)-numSfin;
 	glp_add_rows(lp, 1+2*numSfin);//+numS);
 	glp_add_cols(lp, 2*numS+numV);
 	glp_set_obj_name(lp, "profit");
@@ -449,13 +449,13 @@ void initOpt(void)
 		sprintf(str, "ud_%i", m+1);
 		glp_set_col_name(lp, numS+m+1, str);
 		
-		for (int k=1; k<=(int)numR(m); k++)
+		for (int k=1; k<=(int)numR(m)-1; k++)
 		{
 			sprintf(str, "y_%i_%i", m+1, k);
 			glp_set_col_name(lp, 2*numS+index+k, str);
 			glp_set_col_bnds(lp, 2*numS+index+k, GLP_DB, 0, 1); // 0 <= ytr <= 1
 		}
-		index = index+(int)numR(m);
+		index = index+(int)numR(m)-1;
 	}
 	
 	// Node balance constraint
@@ -489,11 +489,11 @@ void initOpt(void)
 			val[m] = -nuc(m-1); // -uc
 			val[numS+m] = 1/nud(m-1); // ud
 			
-			for (int k=1; k<=(int)numR(count); k++)
+			for (int k=1; k<=(int)numR(count)-1; k++)
 			{
 				val[2*numS+index+k] = 1;
 			}
-			index = index+(int)numR(count);
+			index = index+(int)numR(count)-1;
 			
 			sprintf(str, "value_function_%i", count+1);
 			glp_set_row_name(lp, 1+count+1, str);
@@ -578,6 +578,7 @@ opt_sol solveOpt(float g, float r, float pg, float pr,
 	retval.xc = FloatNDArray(dim_vector(numS, 1));
 	retval.xd = FloatNDArray(dim_vector(numS, 1));
 	int index = 0;
+	int index_v = 0;
 	int count = 1;
 	int ret;
 	
@@ -603,11 +604,12 @@ opt_sol solveOpt(float g, float r, float pg, float pr,
 		
 		if ((int)set_fin(m-1) == 1)
 		{
-			for (int k=1; k<=(int)numR(m-1); k++)
+			for (int k=1; k<=(int)numR(m-1)-1; k++)
 			{
-				glp_set_obj_coef(lp, 2*numS+index+k, v(index+k-1)); // w*v
+				glp_set_obj_coef(lp, 2*numS+index+k, v(index_v+k)); // y*v
 			}
-			index = index+(int)numR(m-1);
+			index_v = index_v+(int)numR(m-1);
+			index = index+(int)numR(m-1)-1;
 			
 			// Value function constraint
 			// -uc+ud+sum{r = 0..numR-1}ytr = R
