@@ -220,7 +220,7 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 								xc.column(k), xd.column(k)
 							);
 							
-							vhatlo(m) = retup.F-ret.F;
+							vhatlo(m) = ret.F;
 							vhatup(m) = retup.F-ret.F;
 						}
 						else if (Rx(m, k) == floor(rho*Qmax(m)))
@@ -236,7 +236,7 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 							);
 							
 							vhatlo(m) = ret.F-retlo.F;
-							vhatup(m) = (octave_int32)0;
+							vhatup(m) = -ret.F;
 						}
 						else
 						{
@@ -302,13 +302,47 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 							}
 							else
 							{
-								float vmean = (v((int)index+level+1, k, smpl(k))+(level-(int)Rx(m, k))*v((int)index+level, k, smpl(k)))/(level-(int)Rx(m, k)-1);
+								float vmean = (v((int)index+level+1, k, smpl(k))+(level-(int)Rx(m, k))*v((int)index+level, k, smpl(k)))/(level-(int)Rx(m, k)+2);
 								for (int j=(int)Rx(m, k); j<=level+1; j++)
 								{
 									v((int)index+j, k, smpl(k)) = vmean;//vhatup(m);
 								}
 							}
 						}
+						
+//						// left
+//						for (int level=(int)Rx(m, k); level>0; level--)
+//						{
+//							if(v((int)index+level-1, k, smpl(k)) >= v((int)index+level, k, smpl(k)))
+//							{
+//								break;
+//							}
+//							else
+//							{
+//								float vnew = (v((int)index+level-1, k, smpl(k))+((int)Rx(m, k)-level+1)*v((int)index+level, k, smpl(k)))/((int)Rx(m, k)-level+2);
+//								for (int j=(int)Rx(m, k); j>=level-1; j--)
+//								{
+//									v((int)index+j, k, smpl(k)) = vnew;
+//								}
+//							}
+//						}
+//						
+//						// right
+//						for (int level=(int)Rx(m, k); level < (int)numR(m)-1; level++)
+//						{
+//							if(v((int)index+level+1, k, smpl(k)) <= v((int)index+level, k, smpl(k)))
+//							{
+//								break;
+//							}
+//							else
+//							{
+//								float vnew = (v((int)index+level+1, k, smpl(k))+(level-(int)Rx(m, k)+1)*v((int)index+level, k, smpl(k)))/(level-(int)Rx(m, k)+2);
+//								for (int j=(int)Rx(m, k); j<=level+1; j++)
+//								{
+//									v((int)index+j, k, smpl(k)) = vnew;
+//								}
+//							}
+//						}
 						
 						index = index+numR(m);
 					} // endfor numSfin
