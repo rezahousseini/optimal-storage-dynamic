@@ -10,7 +10,6 @@ using namespace std;
 
 struct opt_sol
 {
-	float F;
 	float V;
 	FloatNDArray xc;
 	FloatNDArray xd;
@@ -45,11 +44,12 @@ FloatNDArray xd;
 
 int32NDArray set_fin;
 
+float gamma;
+
 void init(octave_scalar_map S);
 void initOpt(void);
-opt_sol solveOpt(float g, float r, float pg, float pr, FloatNDArray pc,
-	FloatNDArray pd, int32NDArray R, FloatNDArray v,
-	FloatNDArray xc, FloatNDArray xd);
+opt_sol solveOpt(float g, float r, FloatNDArray pc, FloatNDArray pd,
+	int32NDArray R, FloatNDArray v, FloatNDArray xc, FloatNDArray xd);
 void deleteOpt(void);
 int32NDArray randi(int start, int end, int number);
 int32NDArray scale(NDArray S, float s);
@@ -109,12 +109,20 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 		FloatNDArray vhatup(dim_vector(numSfin, 1));
 		FloatNDArray zlo(dim_vector(numSfin, 1), 0);
 		FloatNDArray zup(dim_vector(numSfin, 1), 0);
+		
+		float alpha0 = 1;
+		float lambda = pow(alpha0, 2);
+		float delta = alpha0;
+		float c = 0;
+		float sigma2 = 0;
 		float alpha;
 		
 		FloatNDArray q(dim_vector(numSfin, numN));
 		FloatNDArray uc(dim_vector(numS, numN));
 		FloatNDArray ud(dim_vector(numS, numN));
 		FloatNDArray cost(dim_vector(numN, numI), 0);
+		
+		gamma = 0.8;
 		
 		for (int i=0; i<numI; i++)
 		{
@@ -131,7 +139,6 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 					// compute post-decision asset level
 					ret = solveOpt(
 						g.column(smpl(k)).elem(k), r.column(smpl(k)).elem(k),
-						pg.column(smpl(k)).elem(k), pr.column(smpl(k)).elem(k),
 						pc.page(smpl(k)).column(k), pd.page(smpl(k)).column(k),
 						R.column(k), v.page(smpl(k)).column(k),
 						xc.column(k-1), xd.column(k-1)
@@ -143,7 +150,6 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 					// compute post-decision asset level
 					ret = solveOpt(
 						g.column(smpl(k)).elem(k), r.column(smpl(k)).elem(k),
-						pg.column(smpl(k)).elem(k), pr.column(smpl(k)).elem(k),
 						pc.page(smpl(k)).column(k), pd.page(smpl(k)).column(k),
 						R.column(k), v.page(smpl(k)).column(k),
 						int32NDArray(dim_vector(numS, 1), 0), int32NDArray(dim_vector(numS, 1), 0)
@@ -194,7 +200,6 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 					// Observe sample slopes
 					ret = solveOpt(
 						g.column(smpl(k+1)).elem(k+1),r.column(smpl(k+1)).elem(k+1),
-						pg.column(smpl(k+1)).elem(k+1),pr.column(smpl(k+1)).elem(k+1),
 						pc.page(smpl(k+1)).column(k+1),pd.page(smpl(k+1)).column(k+1),
 						Rx.column(k),v.page(smpl(k+1)).column(k+1),
 						xc.column(k), xd.column(k)
@@ -213,7 +218,6 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 							
 							retup = solveOpt(
 								g.column(smpl(k+1)).elem(k+1), r.column(smpl(k+1)).elem(k+1),
-								pg.column(smpl(k+1)).elem(k+1), pr.column(smpl(k+1)).elem(k+1),
 								pc.page(smpl(k+1)).column(k+1), pd.page(smpl(k+1)).column(k+1),
 								Rxup, v.page(smpl(k+1)).column(k+1),
 								xc.column(k), xd.column(k)
@@ -229,7 +233,6 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 							
 							retlo = solveOpt(
 								g.column(smpl(k+1)).elem(k+1), r.column(smpl(k+1)).elem(k+1),
-								pg.column(smpl(k+1)).elem(k+1), pr.column(smpl(k+1)).elem(k+1),
 								pc.page(smpl(k+1)).column(k+1), pd.page(smpl(k+1)).column(k+1),
 								Rxlo, v.page(smpl(k+1)).column(k+1),
 								xc.column(k), xd.column(k)
@@ -247,14 +250,12 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 							
 							retlo = solveOpt(
 								g.column(smpl(k+1)).elem(k+1), r.column(smpl(k+1)).elem(k+1),
-								pg.column(smpl(k+1)).elem(k+1), pr.column(smpl(k+1)).elem(k+1),
 								pc.page(smpl(k+1)).column(k+1), pd.page(smpl(k+1)).column(k+1),
 								Rxlo, v.page(smpl(k+1)).column(k+1),
 								xc.column(k), xd.column(k)
 							);
 							retup = solveOpt(
 								g.column(smpl(k+1)).elem(k+1), r.column(smpl(k+1)).elem(k+1),
-								pg.column(smpl(k+1)).elem(k+1), pr.column(smpl(k+1)).elem(k+1),
 								pc.page(smpl(k+1)).column(k+1), pd.page(smpl(k+1)).column(k+1),
 								Rxup, v.page(smpl(k+1)).column(k+1),
 								xc.column(k), xd.column(k)
@@ -264,15 +265,10 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 							vhatup(m) = retup.V-ret.V;
 						}
 						
-//						if (vhatlo(m) < vhatup(m))
-//						{
-//							vhatlo(m) = (vhatlo(m)+vhatup(m))/2;
-//							vhatup(m) = (vhatlo(m)+vhatup(m))/2;
-//						}
-						
 						// Update slopes
 						// Calculate alpha
-						alpha = 1/(float)NV.page(smpl(k)).column(k).elem(index+Rx(m, k));
+//						alpha = 1/(float)NV.page(smpl(k)).column(k).elem(index+Rx(m, k));
+//						alpha = (1-gamma)*lambda
 						
 						// Calculate z and insert into v
 						v(index+Rx(m, k), k, smpl(k)) = (1-alpha)*v.page(smpl(k)).column(k).elem(index+Rx(m, k))+alpha*vhatlo(m);
@@ -280,6 +276,12 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 						if (Rx(m, k)+(octave_int32)1 < numR(m)-(octave_int32)1)
 						{
 							v(index+Rx(m, k)+(octave_int32)1, k, smpl(k)) = (1-alpha)*v.page(smpl(k)).column(k).elem(index+Rx(m, k)+(octave_int32)1)+alpha*vhatup(m);
+						}
+						
+						if (v(index+Rx(m, k), k, smpl(k)) < v(index+Rx(m, k)+(octave_int32)1, k, smpl(k)))
+						{
+							v(index+Rx(m, k), k, smpl(k)) = (v(index+Rx(m, k), k, smpl(k))+v(index+Rx(m, k)+(octave_int32)1, k, smpl(k)))/2;
+							v(index+Rx(m, k)+(octave_int32)1, k, smpl(k)) = (v(index+Rx(m, k), k, smpl(k))+v(index+Rx(m, k)+(octave_int32)1, k, smpl(k)))/2;
 						}
 						
 						// Projection operation
@@ -558,16 +560,13 @@ void initOpt(void)
 }
 
 /* --------------------------------------------------------------------------- *
- * opt_sol solveOpt(int g, int r, int pg, int pr,                              *
- *  int32NDArray pc, int32NDArray pd, int32NDArray R, FloatNDArray v,          *
- *  FloatNDArray xc, FloatNDArray xd)                                          *
+ * opt_sol solveOpt(int g, int r, int32NDArray pc, int32NDArray pd,            *
+ *  int32NDArray R, FloatNDArray v, FloatNDArray xc, FloatNDArray xd)          *
  * --------------------------------------------------------------------------- *
  * Solving the linear programming problem.
  *
  * @param g  Generated energy (node input to satisfie). 1 x 1
  * @param r Requested energy (node output to satisfie). 1 x 1
- * @param pg Price of one amount of generated enery. 1 x 1
- * @param pr Price of one amount of requested enery. 1 x 1
  * @param pc Price vector for charge vaiables of all resources. numS x 1
  * @param pd Price vector for discharge vaiables of all resources. numS x 1
  * @param R Resource level vector for all finite capacities. numSfin x 1
@@ -579,9 +578,8 @@ void initOpt(void)
  *
  */
 
-opt_sol solveOpt(float g, float r, float pg, float pr,
-	FloatNDArray pc, FloatNDArray pd, int32NDArray R, FloatNDArray v,
-	FloatNDArray xc, FloatNDArray xd)
+opt_sol solveOpt(float g, float r, FloatNDArray pc, FloatNDArray pd,
+	int32NDArray R, FloatNDArray v, FloatNDArray xc, FloatNDArray xd)
 {
 	opt_sol retval;
 	retval.xc = FloatNDArray(dim_vector(numS, 1));
@@ -615,7 +613,7 @@ opt_sol solveOpt(float g, float r, float pg, float pr,
 		{
 			for (int k=1; k<=(int)numR(m-1)-1; k++)
 			{
-				glp_set_obj_coef(lp, 2*numS+index+k, v(index_v+k)); // y*v
+				glp_set_obj_coef(lp, 2*numS+index+k, gamma*v(index_v+k)); // gamma*y*v
 			}
 			index_v = index_v+(int)numR(m-1);
 			index = index+(int)numR(m-1)-1;
@@ -651,7 +649,6 @@ opt_sol solveOpt(float g, float r, float pg, float pr,
 		printf("No simplex solution. Error %i\n", ret);
 	}
 	
-	retval.F = glp_get_obj_val(lp)+rho*rho*(g*pg+r*pr);
 	retval.V = glp_get_obj_val(lp);
 	
 	for (int m=1; m<=numS; m++)
