@@ -11,6 +11,7 @@ using namespace std;
 struct opt_sol
 {
 	float F;
+	float V;
 	FloatNDArray xc;
 	FloatNDArray xd;
 };
@@ -205,11 +206,9 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 					index = 0;
 					for (int m=0; m<numSfin; m++)
 					{
-						Rxlo.insert(Rx.column(k), 0, 0);
-						Rxup.insert(Rx.column(k), 0, 0);
-						
 						if (Rx(m, k) == (octave_int32)0)
 						{
+							Rxup.insert(Rx.column(k), 0, 0);
 							Rxup(m) = Rx(m, k)+(octave_int32)1;
 							
 							retup = solveOpt(
@@ -220,11 +219,12 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 								xc.column(k), xd.column(k)
 							);
 							
-							vhatlo(m) = ret.F;
-							vhatup(m) = retup.F-ret.F;
+							vhatlo(m) = ret.V;
+							vhatup(m) = retup.V-ret.V;
 						}
 						else if (Rx(m, k) == floor(rho*Qmax(m)))
 						{
+							Rxlo.insert(Rx.column(k), 0, 0);
 							Rxlo(m) = Rx(m, k)-(octave_int32)1;
 							
 							retlo = solveOpt(
@@ -235,11 +235,13 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 								xc.column(k), xd.column(k)
 							);
 							
-							vhatlo(m) = ret.F-retlo.F;
-							vhatup(m) = -ret.F;
+							vhatlo(m) = ret.V-retlo.V;
+							vhatup(m) = -ret.V;
 						}
 						else
 						{
+							Rxlo.insert(Rx.column(k), 0, 0);
+							Rxup.insert(Rx.column(k), 0, 0);
 							Rxlo(m) = Rx(m, k)-(octave_int32)1;
 							Rxup(m) = Rx(m, k)+(octave_int32)1;
 							
@@ -258,9 +260,15 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 								xc.column(k), xd.column(k)
 							);
 							
-							vhatlo(m) = ret.F-retlo.F;
-							vhatup(m) = retup.F-ret.F;
+							vhatlo(m) = ret.V-retlo.V;
+							vhatup(m) = retup.V-ret.V;
 						}
+						
+//						if (vhatlo(m) < vhatup(m))
+//						{
+//							vhatlo(m) = (vhatlo(m)+vhatup(m))/2;
+//							vhatup(m) = (vhatlo(m)+vhatup(m))/2;
+//						}
 						
 						// Update slopes
 						// Calculate alpha
@@ -269,7 +277,7 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 						// Calculate z and insert into v
 						v(index+Rx(m, k), k, smpl(k)) = (1-alpha)*v.page(smpl(k)).column(k).elem(index+Rx(m, k))+alpha*vhatlo(m);
 						
-						if (Rx(m, k)+(octave_int32)1 < numR(m))
+						if (Rx(m, k)+(octave_int32)1 < numR(m)-(octave_int32)1)
 						{
 							v(index+Rx(m, k)+(octave_int32)1, k, smpl(k)) = (1-alpha)*v.page(smpl(k)).column(k).elem(index+Rx(m, k)+(octave_int32)1)+alpha*vhatup(m);
 						}
@@ -294,7 +302,7 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 						}
 						
 						// r > Rx
-						for (int level=(int)Rx(m, k)+1; level < (int)numR(m); level++)
+						for (int level=(int)Rx(m, k)+1; level < (int)numR(m)-1; level++)
 						{
 							if(v((int)index+level+1, k, smpl(k)) <= v((int)index+level, k, smpl(k)))
 							{
@@ -302,47 +310,13 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 							}
 							else
 							{
-								float vmean = (v((int)index+level+1, k, smpl(k))+(level-(int)Rx(m, k))*v((int)index+level, k, smpl(k)))/(level-(int)Rx(m, k)+2);
-								for (int j=(int)Rx(m, k); j<=level+1; j++)
+								float vmean = (v((int)index+level+1, k, smpl(k))+(level-(int)Rx(m, k)-1)*v((int)index+level, k, smpl(k)))/(level-(int)Rx(m, k)+1);
+								for (int j=(int)Rx(m, k)+1; j<=level+1; j++)
 								{
 									v((int)index+j, k, smpl(k)) = vmean;//vhatup(m);
 								}
 							}
 						}
-						
-//						// left
-//						for (int level=(int)Rx(m, k); level>0; level--)
-//						{
-//							if(v((int)index+level-1, k, smpl(k)) >= v((int)index+level, k, smpl(k)))
-//							{
-//								break;
-//							}
-//							else
-//							{
-//								float vnew = (v((int)index+level-1, k, smpl(k))+((int)Rx(m, k)-level+1)*v((int)index+level, k, smpl(k)))/((int)Rx(m, k)-level+2);
-//								for (int j=(int)Rx(m, k); j>=level-1; j--)
-//								{
-//									v((int)index+j, k, smpl(k)) = vnew;
-//								}
-//							}
-//						}
-//						
-//						// right
-//						for (int level=(int)Rx(m, k); level < (int)numR(m)-1; level++)
-//						{
-//							if(v((int)index+level+1, k, smpl(k)) <= v((int)index+level, k, smpl(k)))
-//							{
-//								break;
-//							}
-//							else
-//							{
-//								float vnew = (v((int)index+level+1, k, smpl(k))+(level-(int)Rx(m, k)+1)*v((int)index+level, k, smpl(k)))/(level-(int)Rx(m, k)+2);
-//								for (int j=(int)Rx(m, k); j<=level+1; j++)
-//								{
-//									v((int)index+j, k, smpl(k)) = vnew;
-//								}
-//							}
-//						}
 						
 						index = index+numR(m);
 					} // endfor numSfin
@@ -377,6 +351,7 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 		retval(1) = octave_value(uc);
 		retval(2) = octave_value(ud);
 		retval(3) = octave_value(cost);
+		retval(4) = octave_value(v);
 		
 		deleteOpt();
 	}
@@ -677,6 +652,7 @@ opt_sol solveOpt(float g, float r, float pg, float pr,
 	}
 	
 	retval.F = glp_get_obj_val(lp)+rho*rho*(g*pg+r*pr);
+	retval.V = glp_get_obj_val(lp);
 	
 	for (int m=1; m<=numS; m++)
 	{

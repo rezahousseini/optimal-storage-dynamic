@@ -1,27 +1,27 @@
 clear all;
 close all;
 
-numN=10;
-T=1;
+numN=300;
+T=1/4;
 n=0:numN-1;
 t=n*T;
 
-numI=10;
-rho=10;
+numI=300;
+rho=20;
 
 S.Qmax=[10,Inf];
 S.Qmin=[0,0];
 S.q0=[10,Inf];
 S.C=[5,30];
 S.D=[5,30];
-S.nul=[1,1];
-S.nuc=[1,1];
-S.nud=[1,1];
+S.nul=[0.9,1];
+S.nuc=[0.8,1];
+S.nud=[0.9,1];
 S.DeltaCmax=[1,30];
 S.DeltaDmax=[1,30];
 
 numS=length(S.Qmax);
-numW=3;
+numW=1;
 
 u=zeros(1,numN);
 for k=2:numN
@@ -47,7 +47,7 @@ P.pd(2,:,:)=p;
 
 %mkoctfile SPARoptimalNStorage.cc -lglpk
 tic;
-[q,uc,ud]=SPARoptimalNStorage(rho,g,r,P,S,numI,T);
+[q,uc,ud,cost,v]=SPARoptimalNStorage(rho,g,r,P,S,numI,T);
 toc;
 
 figure(1)
@@ -63,4 +63,8 @@ grid on
 figure(3)
 %plot(t,q(1,:),t,q(2,:),t,q(3,:))
 plot(t,q(1,:),t,mean(g,2),t,mean(r,2))
+grid on
+
+figure(4)
+plot(sum(cost))
 grid on
