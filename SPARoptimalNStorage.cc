@@ -44,7 +44,7 @@ FloatNDArray xd;
 
 int32NDArray set_fin;
 
-float gamma;
+float gama;
 
 void init(octave_scalar_map S);
 void initOpt(void);
@@ -104,25 +104,25 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 		int32NDArray smpl;
 		FloatNDArray v(dv_v, 0); // Value function for the different levels
 		int32NDArray NV(dv_v, 0); // Number of visits to the corresponding state
-		opt_sol ret, retup, retlo;
+		opt_sol ret, retup, retlo, retce;
 		FloatNDArray vhatlo(dim_vector(numSfin, 1));
 		FloatNDArray vhatup(dim_vector(numSfin, 1));
 		FloatNDArray zlo(dim_vector(numSfin, 1), 0);
 		FloatNDArray zup(dim_vector(numSfin, 1), 0);
 		
 		float alpha0 = 1;
-		float lambda = pow(alpha0, 2);
-		float delta = alpha0;
-		float c = 0;
-		float sigma2 = 0;
-		float alpha;
+		FloatNDArray lambda(dim_vector(numN, 1), pow(alpha0, 2));
+		FloatNDArray delta(dim_vector(numN, 1), alpha0);
+		FloatNDArray c(dim_vector(numN, 1), 0.1);
+		FloatNDArray sigma2(dim_vector(numN, 1), 0.1);
+		FloatNDArray alpha(dim_vector(numN, 1));
 		
 		FloatNDArray q(dim_vector(numSfin, numN));
 		FloatNDArray uc(dim_vector(numS, numN));
 		FloatNDArray ud(dim_vector(numS, numN));
 		FloatNDArray cost(dim_vector(numN, numI), 0);
-		
-		gamma = 0.8;
+		float nu = 0.2;
+		gama = 0.8;
 		
 		for (int i=0; i<numI; i++)
 		{
@@ -198,7 +198,7 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 				if (k < numN-1)
 				{
 					// Observe sample slopes
-					ret = solveOpt(
+					retce = solveOpt(
 						g.column(smpl(k+1)).elem(k+1),r.column(smpl(k+1)).elem(k+1),
 						pc.page(smpl(k+1)).column(k+1),pd.page(smpl(k+1)).column(k+1),
 						Rx.column(k),v.page(smpl(k+1)).column(k+1),
@@ -223,7 +223,7 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 								xc.column(k), xd.column(k)
 							);
 							
-							vhatlo(m) = ret.V;
+							vhatlo(m) = retce.V;
 							vhatup(m) = retup.V-ret.V;
 						}
 						else if (Rx(m, k) == floor(rho*Qmax(m)))
@@ -239,7 +239,7 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 							);
 							
 							vhatlo(m) = ret.V-retlo.V;
-							vhatup(m) = -ret.V;
+							vhatup(m) = -retce.V;
 						}
 						else
 						{
@@ -261,21 +261,27 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 								xc.column(k), xd.column(k)
 							);
 							
-							vhatlo(m) = ret.V-retlo.V;
+							vhatlo(m) = retce.V-retlo.V;
 							vhatup(m) = retup.V-ret.V;
 						}
 						
 						// Update slopes
 						// Calculate alpha
 //						alpha = 1/(float)NV.page(smpl(k)).column(k).elem(index+Rx(m, k));
-//						alpha = (1-gamma)*lambda
+						c(k) = (1-nu)*c(k)+nu*ret.V;
+						sigma2(k) = (1-nu)*sigma2(k)+nu*pow(c(k)-ret.V, 2);
+						alpha(k) = ((1-gama)*lambda(k)*sigma2(k)+pow(1-(1-gama)*delta(k), 2)*pow(c(k), 2))/
+							(pow(1-gama, 2)*lambda(k)*sigma2(k)+pow(1-(1-gama)*delta(k), 2)*pow(c(k), 2)+sigma2(k));
+						
+						lambda(k) = pow(alpha(k), 2)+pow(1-(1-gama)*alpha(k), 2)*lambda(k);
+						delta(k) = alpha(k)+(1-(1-gama)*alpha(k))*delta(k);
 						
 						// Calculate z and insert into v
-						v(index+Rx(m, k), k, smpl(k)) = (1-alpha)*v.page(smpl(k)).column(k).elem(index+Rx(m, k))+alpha*vhatlo(m);
+						v(index+Rx(m, k), k, smpl(k)) = (1-alpha(k))*v.page(smpl(k)).column(k).elem(index+Rx(m, k))+alpha(k)*vhatlo(m);
 						
 						if (Rx(m, k)+(octave_int32)1 < numR(m)-(octave_int32)1)
 						{
-							v(index+Rx(m, k)+(octave_int32)1, k, smpl(k)) = (1-alpha)*v.page(smpl(k)).column(k).elem(index+Rx(m, k)+(octave_int32)1)+alpha*vhatup(m);
+							v(index+Rx(m, k)+(octave_int32)1, k, smpl(k)) = (1-alpha(k))*v.page(smpl(k)).column(k).elem(index+Rx(m, k)+(octave_int32)1)+alpha(k)*vhatup(m);
 						}
 						
 						if (v(index+Rx(m, k), k, smpl(k)) < v(index+Rx(m, k)+(octave_int32)1, k, smpl(k)))
@@ -613,7 +619,7 @@ opt_sol solveOpt(float g, float r, FloatNDArray pc, FloatNDArray pd,
 		{
 			for (int k=1; k<=(int)numR(m-1)-1; k++)
 			{
-				glp_set_obj_coef(lp, 2*numS+index+k, gamma*v(index_v+k)); // gamma*y*v
+				glp_set_obj_coef(lp, 2*numS+index+k, gama*v(index_v+k)); // gama*y*v
 			}
 			index_v = index_v+(int)numR(m-1);
 			index = index+(int)numR(m-1)-1;
