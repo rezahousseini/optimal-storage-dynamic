@@ -99,7 +99,7 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 		init(S);
 		initOpt();
 		
-		dim_vector dv_v(numR.sum(0).elem(0), numN, numW);
+		dim_vector dv_v(numR.sum(0).elem(0), numN);
 		
 		int32NDArray smpl;
 		FloatNDArray v(dv_v, 0); // Value function for the different levels
@@ -116,6 +116,7 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 		FloatNDArray c(dim_vector(numN, 1), 0.1);
 		FloatNDArray sigma2(dim_vector(numN, 1), 0.1);
 		FloatNDArray alpha(dim_vector(numN, 1));
+//		float alpha;
 		
 		FloatNDArray q(dim_vector(numSfin, numN));
 		FloatNDArray uc(dim_vector(numS, numN));
@@ -123,6 +124,7 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 		FloatNDArray cost(dim_vector(numN, numI), 0);
 		float nu = 0.2;
 		gama = 0.8;
+		octave_int32 index;
 		
 		for (int i=0; i<numI; i++)
 		{
@@ -140,7 +142,7 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 					ret = solveOpt(
 						g.column(smpl(k)).elem(k), r.column(smpl(k)).elem(k),
 						pc.page(smpl(k)).column(k), pd.page(smpl(k)).column(k),
-						R.column(k), v.page(smpl(k)).column(k),
+						R.column(k), v.column(k),
 						xc.column(k-1), xd.column(k-1)
 					);
 				}
@@ -151,7 +153,7 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 					ret = solveOpt(
 						g.column(smpl(k)).elem(k), r.column(smpl(k)).elem(k),
 						pc.page(smpl(k)).column(k), pd.page(smpl(k)).column(k),
-						R.column(k), v.page(smpl(k)).column(k),
+						R.column(k), v.column(k),
 						int32NDArray(dim_vector(numS, 1), 0), int32NDArray(dim_vector(numS, 1), 0)
 					);
 				}
@@ -187,13 +189,13 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 					}
 				}
 				
-				// Count number of visits
-				octave_int32 index = 0;
-				for (int m=0; m<numSfin; m++)
-				{
-					NV(index+Rx(m, k), k, smpl(k)) = NV.page(smpl(k)).column(k).elem(index+Rx(m, k))+(octave_int32)1;
-					index = index+numR(m);
-				}
+//				// Count number of visits
+//				index = 0;
+//				for (int m=0; m<numSfin; m++)
+//				{
+//					NV(index+Rx(m, k), k) = NV(index+Rx(m, k), k)+(octave_int32)1;
+//					index = index+numR(m);
+//				}
 				
 				if (k < numN-1)
 				{
@@ -201,7 +203,7 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 					retce = solveOpt(
 						g.column(smpl(k+1)).elem(k+1),r.column(smpl(k+1)).elem(k+1),
 						pc.page(smpl(k+1)).column(k+1),pd.page(smpl(k+1)).column(k+1),
-						Rx.column(k),v.page(smpl(k+1)).column(k+1),
+						Rx.column(k),v.column(k+1),
 						xc.column(k), xd.column(k)
 					);
 					
@@ -219,7 +221,7 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 							retup = solveOpt(
 								g.column(smpl(k+1)).elem(k+1), r.column(smpl(k+1)).elem(k+1),
 								pc.page(smpl(k+1)).column(k+1), pd.page(smpl(k+1)).column(k+1),
-								Rxup, v.page(smpl(k+1)).column(k+1),
+								Rxup, v.column(k+1),
 								xc.column(k), xd.column(k)
 							);
 							
@@ -234,7 +236,7 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 							retlo = solveOpt(
 								g.column(smpl(k+1)).elem(k+1), r.column(smpl(k+1)).elem(k+1),
 								pc.page(smpl(k+1)).column(k+1), pd.page(smpl(k+1)).column(k+1),
-								Rxlo, v.page(smpl(k+1)).column(k+1),
+								Rxlo, v.column(k+1),
 								xc.column(k), xd.column(k)
 							);
 							
@@ -251,13 +253,13 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 							retlo = solveOpt(
 								g.column(smpl(k+1)).elem(k+1), r.column(smpl(k+1)).elem(k+1),
 								pc.page(smpl(k+1)).column(k+1), pd.page(smpl(k+1)).column(k+1),
-								Rxlo, v.page(smpl(k+1)).column(k+1),
+								Rxlo, v.column(k+1),
 								xc.column(k), xd.column(k)
 							);
 							retup = solveOpt(
 								g.column(smpl(k+1)).elem(k+1), r.column(smpl(k+1)).elem(k+1),
 								pc.page(smpl(k+1)).column(k+1), pd.page(smpl(k+1)).column(k+1),
-								Rxup, v.page(smpl(k+1)).column(k+1),
+								Rxup, v.column(k+1),
 								xc.column(k), xd.column(k)
 							);
 							
@@ -267,7 +269,7 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 						
 						// Update slopes
 						// Calculate alpha
-//						alpha = 1/(float)NV.page(smpl(k)).column(k).elem(index+Rx(m, k));
+//						alpha = 1/(float)NV(index+Rx(m, k), k);
 						c(k) = (1-nu)*c(k)+nu*ret.V;
 						sigma2(k) = (1-nu)*sigma2(k)+nu*pow(c(k)-ret.V, 2);
 						alpha(k) = ((1-gama)*lambda(k)*sigma2(k)+pow(1-(1-gama)*delta(k), 2)*pow(c(k), 2))/
@@ -277,54 +279,107 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 						delta(k) = alpha(k)+(1-(1-gama)*alpha(k))*delta(k);
 						
 						// Calculate z and insert into v
-						v(index+Rx(m, k), k, smpl(k)) = (1-alpha(k))*v.page(smpl(k)).column(k).elem(index+Rx(m, k))+alpha(k)*vhatlo(m);
+						v(index+Rx(m, k), k) = (1-alpha(k))*v(index+Rx(m, k), k)+alpha(k)*vhatlo(m);
 						
 						if (Rx(m, k)+(octave_int32)1 < numR(m)-(octave_int32)1)
 						{
-							v(index+Rx(m, k)+(octave_int32)1, k, smpl(k)) = (1-alpha(k))*v.page(smpl(k)).column(k).elem(index+Rx(m, k)+(octave_int32)1)+alpha(k)*vhatup(m);
+							v(index+Rx(m, k)+(octave_int32)1, k) = (1-alpha(k))*v(index+Rx(m, k)+(octave_int32)1, k)+alpha(k)*vhatup(m);
 						}
 						
-						if (v(index+Rx(m, k), k, smpl(k)) < v(index+Rx(m, k)+(octave_int32)1, k, smpl(k)))
+						if (v(index+Rx(m, k), k) < v(index+Rx(m, k)+(octave_int32)1, k))
 						{
-							v(index+Rx(m, k), k, smpl(k)) = (v(index+Rx(m, k), k, smpl(k))+v(index+Rx(m, k)+(octave_int32)1, k, smpl(k)))/2;
-							v(index+Rx(m, k)+(octave_int32)1, k, smpl(k)) = (v(index+Rx(m, k), k, smpl(k))+v(index+Rx(m, k)+(octave_int32)1, k, smpl(k)))/2;
+							float vmean = (v(index+Rx(m, k), k)+v(index+Rx(m, k)+(octave_int32)1, k))/2;
+							v(index+Rx(m, k), k) = vmean;
+							v(index+Rx(m, k)+(octave_int32)1, k) = vmean;
 						}
+						
+//						printf("v(Rx)=%f\n", v(index+Rx(m, k), k));
+//						printf("v(Rx+1)=%f\n", v(index+Rx(m, k)+(octave_int32)1, k));
+//						printf("v1=");
+//						for (int z=0; z<(int)numR(m); z++)
+//						{
+//							printf("%f ", v((int)index+z, k));
+//						}
+//						printf("\n");
 						
 						// Projection operation
 						
 						// r < Rx
 						for (int level=(int)Rx(m, k); level>0; level--)
 						{
-							if(v((int)index+level-1, k, smpl(k)) >= v((int)index+level, k, smpl(k)))
+							if(v((int)index+level-1, k) >= v((int)index+level, k))
 							{
 								break;
 							}
 							else
 							{
-								float vmean = (v((int)index+level-1, k, smpl(k))+((int)Rx(m, k)-level+1)*v((int)index+level, k, smpl(k)))/((int)Rx(m, k)-level+2);
+//								float vmean = (v((int)index+level-1, k)+((int)Rx(m, k)-level+1)*v((int)index+level, k))/((int)Rx(m, k)-level+2);
 								for (int j=(int)Rx(m, k); j>=level-1; j--)
 								{
-									v((int)index+j, k, smpl(k)) = vmean;//vhatlo(m);
+									v((int)index+j, k) = v(index+Rx(m, k), k);
 								}
 							}
 						}
 						
+//						for (int level=0; level<(int)Rx(m, k); level++)
+//						{
+//							if (v((int)index+level+1, k) > v((int)index+level, k))
+//							{
+//								float vsum = 0;
+//								for (int j=level; j<=(int)Rx(m, k); j++)
+//								{
+//									vsum = vsum+v((int)index+j, k);
+//								}
+//								FloatNDArray vmean(dim_vector((int)Rx(m, k)-level+1, 1), vsum/((int)Rx(m, k)-level+1));
+//								v.insert(vmean, index+(octave_int32)level, k);
+//								break;
+//							}
+//						}
+						
 						// r > Rx
-						for (int level=(int)Rx(m, k)+1; level < (int)numR(m)-1; level++)
+						if (Rx(m, k)+(octave_int32)1 < numR(m))
 						{
-							if(v((int)index+level+1, k, smpl(k)) <= v((int)index+level, k, smpl(k)))
+							for (int level=(int)Rx(m, k)+1; level < (int)numR(m)-1; level++)
 							{
-								break;
-							}
-							else
-							{
-								float vmean = (v((int)index+level+1, k, smpl(k))+(level-(int)Rx(m, k)-1)*v((int)index+level, k, smpl(k)))/(level-(int)Rx(m, k)+1);
-								for (int j=(int)Rx(m, k)+1; j<=level+1; j++)
+								if (v((int)index+level+1, k) <= v((int)index+level, k))
 								{
-									v((int)index+j, k, smpl(k)) = vmean;//vhatup(m);
+									break;
+								}
+								else
+								{
+//									float vmean = (v((int)index+level+1, k)+(level-(int)Rx(m, k))*v((int)index+level, k))/(level-(int)Rx(m, k)+1);
+									for (int j=(int)Rx(m, k)+1; j<=level+1; j++)
+									{
+										v((int)index+j, k) = v(index+Rx(m, k)+(octave_int32)1, k);
+									}
 								}
 							}
 						}
+						
+//						if (Rx(m, k)+(octave_int32)1 < numR(m))
+//						{
+//							for (int level=(int)numR(m)-1; level>(int)Rx(m, k)+1; level--)
+//							{
+//								if (v((int)index+level-1, k) < v((int)index+level, k))
+//								{
+//									float vsum = 0;
+//									for (int j=level; j>=(int)Rx(m, k)+1; j--)
+//									{
+//										vsum = vsum+v((int)index+j, k);
+//									}
+//									FloatNDArray vmean(dim_vector(level-(int)Rx(m, k), 1), vsum/(level-(int)Rx(m, k)));
+//									v.insert(vmean, index+Rx(m, k)+(octave_int32)1, k);
+//									break;
+//								}
+//							}
+//						}
+						
+//						printf("v2=");
+//						for (int z=0; z<(int)numR(m); z++)
+//						{
+//							printf("%f ", v((int)index+z, k));
+//						}
+//						printf("\n");
 						
 						index = index+numR(m);
 					} // endfor numSfin

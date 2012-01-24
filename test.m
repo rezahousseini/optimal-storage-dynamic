@@ -1,13 +1,13 @@
 clear all;
 close all;
 
-numN=300;
-T=1/4;
+numN=100;
+T=1;
 n=0:numN-1;
 t=n*T;
 
-numI=300;
-rho=20;
+numI=100;
+rho=10;
 
 S.Qmax=[10,Inf];
 S.Qmin=[0,0];
