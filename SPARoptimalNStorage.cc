@@ -193,8 +193,8 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 				
 //				printf("ret.C=%f\n", ret.C);
 				
-				c(k) = (1-nu)*c(k)+nu*ret.C;
-				sigma2(k) = (1-nu)*sigma2(k)+nu*pow(c(k)-ret.C, 2);
+//				c(k) = (1-nu)*c(k)+nu*ret.F;
+//				sigma2(k) = (1-nu)*sigma2(k)+nu*pow(c(k)-ret.F, 2);
 				
 //				printf("c=%f\n", c(k));
 //				printf("sigma2=%f\n", sigma2(k));
@@ -216,6 +216,9 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 						Rx.column(k),v.column(k+1),
 						xc.column(k), xd.column(k)
 					);
+					
+					c(k) = (1-nu)*c(k)+nu*retce.F;
+					sigma2(k) = (1-nu)*sigma2(k)+nu*pow(c(k)-retce.F, 2);
 					
 					int32NDArray Rxlo(dim_vector(numSfin,1));
 					int32NDArray Rxup(dim_vector(numSfin,1));
@@ -251,7 +254,7 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 							);
 							
 							vhatlo(m) = retce.F-retlo.F;
-							vhatup(m) = (octave_int32)0;//-retce.V;
+							vhatup(m) = -retce.F;
 						}
 						else
 						{
@@ -302,11 +305,15 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 						
 //						if (v(index+Rx(m, k), k) < v(index+Rx(m, k)+(octave_int32)1, k))
 //						{
-//							float vmean = (v(index+Rx(m, k), k)+v(index+Rx(m, k)+(octave_int32)1, k))/2;
-//							v(index+Rx(m, k), k) = vmean;
-//							v(index+Rx(m, k)+(octave_int32)1, k) = vmean;
+////							float vmean = (v(index+Rx(m, k), k)+v(index+Rx(m, k)+(octave_int32)1, k))/2;
+////							v(index+Rx(m, k), k) = vmean;
+////							v(index+Rx(m, k)+(octave_int32)1, k) = vmean;
+//							v(index+Rx(m, k), k) = v(index+Rx(m, k)+(octave_int32)1, k);
 //						}
 						
+//						printf("v(Rx)=%f\n", v(index+Rx(m, k), k));
+//						printf("v(Rx+1)=%f\n", v(index+Rx(m, k)+(octave_int32)1, k));
+//						
 //						printf("v1=");
 //						for (int z=0; z<(int)numR(m); z++)
 //						{
@@ -536,8 +543,8 @@ void initOpt(void)
 				val[n] = 0;
 			}
 			
-			val[m] = -nuc(m-1); // -uc
-			val[numS+m] = 1/nud(m-1); // ud
+			val[m] = -nuc(m-1)*rho; // -uc
+			val[numS+m] = 1/nud(m-1)*rho; // ud
 			
 			for (int k=1; k<=(int)numR(count)-1; k++)
 			{
@@ -659,7 +666,7 @@ opt_sol solveOpt(float g, float r, FloatNDArray pc, FloatNDArray pd,
 			
 			// Value function constraint
 			// -uc+ud+sum{r = 0..numR-1}ytr = R
-			glp_set_row_bnds(lp, 1+count, GLP_FX, (float)R(count-1)/rho*nul(m-1), (float)R(count-1)/rho*nul(m-1));
+			glp_set_row_bnds(lp, 1+count, GLP_FX, (float)R(count-1)*nul(m-1), (float)R(count-1)*nul(m-1));
 			
 			// Minimum and Maximum capacity constraint
 			// Qmin-R <= uc-ud <= Qmax-R
