@@ -1,24 +1,24 @@
 clear all;
 close all;
 
-numN=10;
+numN=100;
 T=1;
 n=0:numN-1;
 t=n*T;
 
-numI=3;
-rho=1;
+numI=100;
+rho=10;
 
 S.Qmax=[10,Inf];
 S.Qmin=[0,0];
 S.q0=[10,Inf];
 S.C=[5,30];
 S.D=[5,30];
-S.nul=[0.9,1];
-S.nuc=[0.8,1];
-S.nud=[0.9,1];
-S.DeltaCmax=[1,30];
-S.DeltaDmax=[1,30];
+S.nul=[1,1];
+S.nuc=[1,1];
+S.nud=[1,1];
+S.DeltaCmax=[5,30];
+S.DeltaDmax=[5,30];
 
 numS=length(S.Qmax);
 numW=1;
@@ -30,8 +30,8 @@ endfor
 
 for k=1:numW
 	g(:,k)=exp(1+1.5*cos(2*pi.*n*T/24-5*pi/4)+u+normrnd(0,0.1,1,numN));
-	p(:,k)=exp(0.1+0.4*cos(2*pi.*n*T/24-3*pi/2)+u+normrnd(0,0.1,1,numN));
-	r(:,k)=exp(1.17+1.6*cos(2*pi.*n*T/24-pi)+u+normrnd(0,0.1,1,numN));
+	p(:,k)=exp(0.2+0.4*cos(2*pi.*n*T/24-3*pi/2)+u+normrnd(0,0.1,1,numN));
+	r(:,k)=exp(1.1+1.4*cos(2*pi.*n*T/24-pi)+u+normrnd(0,0.1,1,numN));
 endfor
 
 P.pg=zeros(numN,numW);
