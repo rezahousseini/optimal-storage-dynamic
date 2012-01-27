@@ -6,7 +6,7 @@ T=1;
 n=0:numN-1;
 t=n*T;
 
-numI=100;
+numI=30;
 rho=10;
 
 S.Qmax=[10,Inf];
@@ -15,7 +15,7 @@ S.q0=[10,Inf];
 S.C=[5,30];
 S.D=[5,30];
 S.nul=[1,1];
-S.nuc=[1,1];
+S.nuc=[0.9,1];
 S.nud=[1,1];
 S.DeltaCmax=[5,30];
 S.DeltaDmax=[5,30];
