@@ -1,5 +1,5 @@
 /* ----------------------------------------------------------------------------*
- * void initOpt(void)                                                          *
+ * void initLinProg(void)                                                          *
  * ----------------------------------------------------------------------------*
  * Initiat the linear programming problem.
  *
@@ -9,7 +9,7 @@
  *
  */
 
-void initOpt(void)
+void initLinProg(void)
 {
 	lp = glp_create_prob();
 	int numV = (int)numR.sum(0).elem(0)-numSfin;
@@ -143,16 +143,16 @@ void initOpt(void)
 	parm_lp.msg_lev = GLP_MSG_ERR;
 //	parm_lp.tol_bnd = 1e-4;
 	
-	glp_init_iocp(&parm_mip);
-	parm_mip.msg_lev = GLP_MSG_ERR;
-	parm_mip.presolve = GLP_ON;
-	parm_mip.gmi_cuts = GLP_ON;
+//	glp_init_iocp(&parm_mip);
+//	parm_mip.msg_lev = GLP_MSG_ERR;
+//	parm_mip.presolve = GLP_ON;
+//	parm_mip.gmi_cuts = GLP_ON;
 //	parm_mip.tol_int = 1e-5;
 //	parm_mip.mip_gap = 0.001;
 }
 
 /* --------------------------------------------------------------------------- *
- * opt_sol solveOpt(int g, int r, int32NDArray pc, int32NDArray pd,            *
+ * opt_sol solveLinProg(int g, int r, int32NDArray pc, int32NDArray pd,            *
  *  int32NDArray R, FloatNDArray v, FloatNDArray xc, FloatNDArray xd)          *
  * --------------------------------------------------------------------------- *
  * Solving the linear programming problem.
@@ -170,7 +170,7 @@ void initOpt(void)
  *
  */
 
-opt_sol solveOpt(float g, float r, FloatNDArray pc, FloatNDArray pd,
+opt_sol solveLinProg(float g, float r, FloatNDArray pc, FloatNDArray pd,
 	int32NDArray R, FloatNDArray v, FloatNDArray xc, FloatNDArray xd)
 {
 	opt_sol retval;
@@ -205,6 +205,7 @@ opt_sol solveOpt(float g, float r, FloatNDArray pc, FloatNDArray pd,
 		{
 			for (int k=1; k<=(int)numR(m-1)-1; k++)
 			{
+//				printf("gama*v(index_v+k)=%f\n", gama*v(index_v+k));
 				glp_set_obj_coef(lp, 2*numS+index+k, gama*v(index_v+k)); // gama*y*v
 			}
 			index_v = index_v+(int)numR(m-1);
@@ -250,7 +251,7 @@ opt_sol solveOpt(float g, float r, FloatNDArray pc, FloatNDArray pd,
 //	}
 	
 	retval.F = glp_get_obj_val(lp);
-	
+	float C = 0;
 //	retval.F = glp_mip_obj_val(lp);
 	
 	for (int m=1; m<=numS; m++)
@@ -260,16 +261,16 @@ opt_sol solveOpt(float g, float r, FloatNDArray pc, FloatNDArray pd,
 		
 		retval.xc(m-1) = glp_get_col_prim(lp, m);
 		retval.xd(m-1) = glp_get_col_prim(lp, numS+m);
-		
+		C = C-glp_get_col_prim(lp, m)/rho*pc(m-1)-glp_get_col_prim(lp, numS+m)/rho*pd(m-1);
 //		printf("xc2=%f\n", glp_mip_col_val(lp, m));
 //		printf("xd2=%f\n", glp_mip_col_val(lp, numS+m));
 	}
-	
+	retval.C = C;
 	return retval;
 }
 
 /* ----------------------------------------------------------------------------*
- * void deleteOpt(void)                                                        *
+ * void deleteLinProg(void)                                                        *
  * ----------------------------------------------------------------------------*
  * Deleting the linear programming problem.
  *
@@ -279,7 +280,7 @@ opt_sol solveOpt(float g, float r, FloatNDArray pc, FloatNDArray pd,
  *
  */
 
-void deleteOpt(void)
+void deleteLinProg(void)
 {
 	glp_delete_prob(lp);
 }

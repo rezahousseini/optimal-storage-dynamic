@@ -1,15 +1,15 @@
 /* ----------------------------------------------------------------------------*
- * void init(octave_scalar_map S)                                              *
+ * int32NDArray init(octave_scalar_map S)                                              *
  * ----------------------------------------------------------------------------*
  * Initiation of the algorithm.
  *
  * @param S Structure with storage parameters.
  *
- * @return void
+ * @return R
  *
  */ 
 
-void init(octave_scalar_map S)
+int32NDArray init(octave_scalar_map S)
 {
 	// Storage parameters
 	Qmax = S.contents("Qmax").array_value();
@@ -39,10 +39,7 @@ void init(octave_scalar_map S)
 	numSfin = set_fin.sum(0).elem(0);
 	numR = int32NDArray(dim_vector(numSfin,1));
 	
-	R = int32NDArray(dim_vector(numSfin, numN), 0); // Pre-decision asset level
-	Rx = int32NDArray(dim_vector(numSfin, numN), 0); // Post-decision asset level
-	xc = FloatNDArray(dim_vector(numS, numN), 0);
-	xd = FloatNDArray(dim_vector(numS, numN), 0);
+	int32NDArray R(dim_vector(numSfin, numN), 0);
 	
 	count = 0;
 	for (int k=0; k<numS; k++)
@@ -56,4 +53,6 @@ void init(octave_scalar_map S)
 	}
 	
 	srand(time(NULL));
+	
+	return R;
 }
