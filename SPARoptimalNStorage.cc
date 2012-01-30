@@ -42,11 +42,11 @@ FloatNDArray DeltaDmax;
 
 int32NDArray set_fin;
 
-float gama;
-float nu;
-float alpha0;
+const float gama;
+const float nu;
+const float alpha0;
 
-// Own header files.
+// Own source files.
 #include "init.h"
 #include "linprog.h"
 #include "transition.h"
@@ -98,7 +98,6 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 		
 		int32NDArray R = init(S); // Pre-decision asset level
 		int32NDArray Rx = int32NDArray(dim_vector(numSfin, numN), 0); // Post-decision asset level
-		initLinProg();
 		
 		dim_vector dv_v(numR.sum(0).elem(0), numN);
 		
@@ -113,19 +112,21 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 		FloatNDArray uc(dim_vector(numS, numN));
 		FloatNDArray ud(dim_vector(numS, numN));
 		FloatNDArray cost(dim_vector(numN, numI), 0);
-		gama = 0.95;
+		gama = 0.8;
 		nu = 0.2;
 		alpha0 = 10;
-		octave_int32 index;
 		
 		FloatNDArray alpha(dim_vector(1, numN));
 		FloatNDArray lambda(dim_vector(1, numN), pow(alpha0, 2));
 		FloatNDArray delta(dim_vector(1, numN), alpha0);
 		FloatNDArray c(dim_vector(1, numN), 1);
 		FloatNDArray sigma2(dim_vector(1, numN), 1);
+		FloatNDArray deltaStep(dim_vector(1, numN), 0.5*(float)numR.max().elem(0));
 		
 		FloatNDArray xc = FloatNDArray(dim_vector(numS, numN), 0);
 		FloatNDArray xd = FloatNDArray(dim_vector(numS, numN), 0);
+		
+		initLinProg();
 		
 		for (int i=0; i<numI; i++)
 		{
@@ -206,13 +207,13 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 						Rx.column(k), v.column(k+1), xc.column(k), xd.column(k)
 					);
 					
-					index = 0;
+					octave_int32 index = 0;
 					for (int m=0; m<numSfin; m++)
 					{
 						// Update slope
 						z = updateSlope(
 							v.column(k).linear_slice(index, index+numR(m)),
-							vhat.column(m), alpha(k), Rx(m, k)
+							vhat.column(m), alpha(k), Rx(m, k), deltaStep(k)
 						);
 						
 						// Project slope
@@ -230,6 +231,17 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 					cost(k, i) = cost(k, i)+xc(m, k)/rho*pc(m, k)+xd(m, k)/rho*pd(m, k);
 				}
 				cost(k, i) = cost(k, i)+g(k)*pg(k)+r(k)*pr(k);
+			}
+			
+			for (int k=0; k<numN; k++)
+			{
+				if (i != 0)
+				{
+					if (cost(k, i) < cost(k, i-1))
+					{
+						deltaStep(k) = fmax(1, 0.5*deltaStep(k));
+					}
+				}
 			}
 			
 		} // endfor iter
