@@ -34,9 +34,9 @@ FloatNDArray DeltaDmax;
 
 int32NDArray set_fin;
 
-const float gama = 0.8;
+const float gama = 0.9;
 const float nu = 0.2;
-const float alpha0 = 10;
+const float alpha0 = 1e-2;
 
 // Own source files.
 #include "init.h"
@@ -103,12 +103,15 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 		FloatNDArray xc = FloatNDArray(dim_vector(numS, numN), 0);
 		FloatNDArray xd = FloatNDArray(dim_vector(numS, numN), 0);
 		
+//		FloatNDArray B(dim_vector((int)numR.sum(0).elem(0)-numSfin, (int)numR.sum(0).elem(0)-numSfin), 1);
+//		float lambda_gama = 0.9;
+		
 		FloatNDArray alpha(dim_vector(1, numN));
 		FloatNDArray lambda(dim_vector(1, numN), pow(alpha0, 2));
 		FloatNDArray delta(dim_vector(1, numN), alpha0);
 		FloatNDArray c(dim_vector(1, numN), 0.1);
 		FloatNDArray sigma2(dim_vector(1, numN), 0.1);
-		FloatNDArray deltaStep(dim_vector(1, numN), 0.4*(float)numR.max().elem(0));
+		FloatNDArray deltaStep(dim_vector(1, numN), 0.6*(float)numR.max().elem(0));
 		
 		// Return values
 		FloatNDArray q(dim_vector(numSfin, numN));
@@ -157,8 +160,8 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 				Rx.insert(transitionResource(R.column(k), xc.column(k), xd.column(k)), 0, k);
 				
 				// Update step
-				c(k) = (1-nu)*c(k)+nu*ret.C;
-				sigma2(k) = (1-nu)*sigma2(k)+nu*pow(c(k)-ret.C, 2);
+				c(k) = (1-nu)*c(k)+nu*ret.F;
+				sigma2(k) = (1-nu)*sigma2(k)+nu*pow(c(k)-ret.F, 2);
 				
 				alpha(k) = ((1-gama)*lambda(k)*sigma2(k)+pow(1-(1-gama)*delta(k), 2)*pow(c(k), 2))/
 					(pow(1-gama, 2)*lambda(k)*sigma2(k)+pow(1-(1-gama)*delta(k), 2)*pow(c(k), 2)+sigma2(k));

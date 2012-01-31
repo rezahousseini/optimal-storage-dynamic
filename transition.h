@@ -24,7 +24,8 @@ int32NDArray transitionResource(int32NDArray R, FloatNDArray xc,
 		if ((int)set_fin(m) == 1)
 		{
 			// Resource transition function
-			Rxerr = nul(m)*(float)R(count)+T*(nuc(m)*xc(m)-(1/nud(m))*xd(m));
+//			Rxerr = nul(m)*(float)R(count)+T*(nuc(m)*xc(m)-(1/nud(m))*xd(m));
+			Rxerr = (float)R(count)+T*(xc(m)-xd(m));
 			
 			if (Rxerr < rho*Qmin(m))
 			{
