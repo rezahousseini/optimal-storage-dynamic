@@ -9,4 +9,4 @@ mkoctfile <filename> -lglpk -lQuadProgpp
 	- slopeupdate.h
 	- transition.h
 	- utils.h (former support.h)
-- Library QuadProgPP will not be used in further versions.
+- Library QuadProgPP will not be used in futur versions.
