@@ -1,3 +1,12 @@
+struct opt_sol
+{
+	float F;
+	float C;
+	FloatNDArray xc;
+	FloatNDArray xd;
+	FloatNDArray vhat;
+};
+
 /* ----------------------------------------------------------------------------*
  * void initLinProg(void)                                                          *
  * ----------------------------------------------------------------------------*
@@ -52,8 +61,8 @@ void initLinProg(void)
 	glp_set_row_name(lp, 1, "balance");
 	for (int m=1; m<=numS; m++)
 	{
-		val[m] = 1;//nuc(m-1); // uc
-		val[numS+m] = -1;//-1/nud(m-1); // -ud
+		val[m] = nuc(m-1); // uc
+		val[numS+m] = -1/nud(m-1); // -ud
 	}
 	for (int m=1; m<=numV; m++)
 	{
@@ -81,8 +90,8 @@ void initLinProg(void)
 				val[n] = 0;
 			}
 			
-			val[m] = -1;//-nuc(m-1); // -uc
-			val[numS+m] = 1;//1/nud(m-1); // ud
+			val[m] = -nuc(m-1); // -uc
+			val[numS+m] = 1/nud(m-1); // ud
 			
 			for (int k=1; k<=(int)numR(count)-1; k++)
 			{
@@ -110,8 +119,8 @@ void initLinProg(void)
 				val[n] = 0;
 			}
 			
-			val[m] = 1;//nuc(m-1); // uc
-			val[numS+m] = -1;//-1/nud(m-1); // -ud
+			val[m] = nuc(m-1); // uc
+			val[numS+m] = -1/nud(m-1); // -ud
 			
 			sprintf(str, "capacity_bound_%i", count);
 			glp_set_row_name(lp, 1+numSfin+count, str);
@@ -152,7 +161,7 @@ void initLinProg(void)
 }
 
 /* --------------------------------------------------------------------------- *
- * opt_sol solveLinProg(int g, int r, int32NDArray pc, int32NDArray pd,            *
+ * opt_sol solveLinProg(float g, float r, FloatNDArray pc, FloatNDArray pd,    *
  *  int32NDArray R, FloatNDArray v, FloatNDArray xc, FloatNDArray xd)          *
  * --------------------------------------------------------------------------- *
  * Solving the linear programming problem.
@@ -176,6 +185,7 @@ opt_sol solveLinProg(float g, float r, FloatNDArray pc, FloatNDArray pd,
 	opt_sol retval;
 	retval.xc = FloatNDArray(dim_vector(numS, 1));
 	retval.xd = FloatNDArray(dim_vector(numS, 1));
+	retval.vhat = FloatNDArray(dim_vector(numSfin, 1));
 	int index = 0;
 	int index_v = 0;
 	int count = 1;
@@ -187,12 +197,20 @@ opt_sol solveLinProg(float g, float r, FloatNDArray pc, FloatNDArray pd,
 		// uc_(k-1)-DeltaCmax <= uc_k <= uc_(k-1)+DeltaCmax
 		glp_set_col_bnds(lp, m, GLP_DB,
 			fmax(0, floor(T*nuc(m-1)*(xc(m-1)-rho*DeltaCmax(m-1)))),
-			fmin(floor(T*nuc(m-1)*rho*C(m-1)), floor(T*nuc(m-1)*(xc(m-1)+rho*DeltaCmax(m-1)))));
+			fmin(
+				floor(T*nuc(m-1)*rho*C(m-1)),
+				floor(T*nuc(m-1)*(xc(m-1)+rho*DeltaCmax(m-1)))
+			)
+		);
 		
 		// ud_(k-1)-DeltaDmax <= ud_k <= ud_(k-1)+DeltaDmax
 		glp_set_col_bnds(lp, numS+m, GLP_DB,
 			fmax(0, floor(T/nud(m-1)*(xd(m-1)-rho*DeltaDmax(m-1)))),
-			fmin(floor(T/nud(m-1)*rho*D(m-1)), floor(T/nud(m-1)*(xd(m-1)+rho*DeltaDmax(m-1)))));
+			fmin(
+				floor(T/nud(m-1)*rho*D(m-1)),
+				floor(T/nud(m-1)*(xd(m-1)+rho*DeltaDmax(m-1)))
+			)
+		);
 	}
 	
 	// Objectiv coefficient
@@ -259,6 +277,7 @@ opt_sol solveLinProg(float g, float r, FloatNDArray pc, FloatNDArray pd,
 //		retval.xc(m-1) = glp_mip_col_val(lp, m);
 //		retval.xd(m-1) = glp_mip_col_val(lp, numS+m);
 		
+		
 		retval.xc(m-1) = glp_get_col_prim(lp, m);
 		retval.xd(m-1) = glp_get_col_prim(lp, numS+m);
 		C = C-glp_get_col_prim(lp, m)/rho*pc(m-1)-glp_get_col_prim(lp, numS+m)/rho*pd(m-1);
@@ -266,6 +285,12 @@ opt_sol solveLinProg(float g, float r, FloatNDArray pc, FloatNDArray pd,
 //		printf("xd2=%f\n", glp_mip_col_val(lp, numS+m));
 	}
 	retval.C = C;
+	
+	for (int m=1; m<=numSfin; m++)
+	{
+		retval.vhat(m-1) = glp_get_row_dual(lp, 1+m);
+	}
+	
 	return retval;
 }
 

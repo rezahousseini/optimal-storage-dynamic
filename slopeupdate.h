@@ -1,20 +1,22 @@
-/* ----------------------------------------------------------------------------*
- * FloatNDArray observeSlope(FloatNDArray z)                                   *
- * ----------------------------------------------------------------------------*
- * Observe the slopes.
- *
- * @param z
- *
- * @return v
- *
- */
+// Dependencies
+//#include "linprog.h"
 
-FloatNDArray observeSlope(float g, float r,
+FloatNDArray observeSlopeDual(float g, float r,
 	FloatNDArray pc, FloatNDArray pd, 
 	int32NDArray Rx, FloatNDArray v,
 	int32NDArray xc, int32NDArray xd)
 {
-	FloatNDArray vhat(dim_vector(1, numSfin));
+	opt_sol retce = solveLinProg(g, r, pc, pd, Rx, v, xc, xd);
+	
+	return retce.vhat;
+}
+
+FloatNDArray observeSlopeDerivative(float g, float r,
+	FloatNDArray pc, FloatNDArray pd, 
+	int32NDArray Rx, FloatNDArray v,
+	int32NDArray xc, int32NDArray xd)
+{
+	FloatNDArray vhat(dim_vector(numSfin, 1));
 	opt_sol retup, retlo, retce;
 	int32NDArray Rxlo(dim_vector(numSfin,1));
 	int32NDArray Rxup(dim_vector(numSfin,1));
@@ -23,6 +25,24 @@ FloatNDArray observeSlope(float g, float r,
 	
 	for (int m=0; m<numSfin; m++)
 	{
+		if (Rx(m) == floor(rho*Qmax(m)))
+		{
+			// There's no value in adding more than the maximum
+			vhat(m) = (octave_int32)0;
+		}
+		else
+		{
+			Rxup.insert(Rx, 0, 0);
+			Rxup(m) = Rx(m)+(octave_int32)1;
+			
+			retup = solveLinProg(g, r, pc, pd, Rxup, v, xc, xd);
+			
+			vhat(m) = retup.F-retce.F;
+		}
+	}
+	
+//	for (int m=0; m<numSfin; m++)
+//	{
 //		if (Rx(m) == (octave_int32)0)
 //		{
 //			Rxup.insert(Rx, 0, 0);
@@ -30,8 +50,8 @@ FloatNDArray observeSlope(float g, float r,
 //			
 //			retup = solveLinProg(g, r, pc, pd, Rxup, v, xc, xd);
 //			
-//			vhat(0, m) = (octave_int32)0;//retce.V;
-//			vhat(1, m) = retup.F-retce.F;
+//			vhat(m, 0) = (octave_int32)0;
+//			vhat(m, 1) = retup.F-retce.F;
 //		}
 //		else if (Rx(m) == floor(rho*Qmax(m)))
 //		{
@@ -40,8 +60,8 @@ FloatNDArray observeSlope(float g, float r,
 //			
 //			retlo = solveLinProg(g, r, pc, pd, Rxlo, v, xc, xd);
 //			
-//			vhat(0, m) = retce.F-retlo.F;
-//			vhat(1, m) = -retce.F;
+//			vhat(m, 0) = retce.F-retlo.F;
+//			vhat(m, 1) = (octave_int32)0;;
 //		}
 //		else
 //		{
@@ -53,39 +73,44 @@ FloatNDArray observeSlope(float g, float r,
 //			retlo = solveLinProg(g, r, pc, pd, Rxlo, v, xc, xd);
 //			retup = solveLinProg(g, r, pc, pd, Rxup, v, xc, xd);
 //			
-//			vhat(0, m) = retce.F-retlo.F;
-//			vhat(1, m) = retup.F-retce.F;
+//			vhat(m, 0) = retce.F-retlo.F;
+//			vhat(m, 1) = retup.F-retce.F;
 //		}
-		
-		if (Rx(m) == floor(rho*Qmax(m)))
-		{
-			vhat(0, m) = (octave_int32)0;
-		}
-		else
-		{
-			Rxup.insert(Rx, 0, 0);
-			Rxup(m) = Rx(m)+(octave_int32)1;
-			
-			retup = solveLinProg(g, r, pc, pd, Rxup, v, xc, xd);
-			
-			vhat(0, m) = retup.F-retce.F;
-		}
-	}
-	
-	
-	
-//	printf("vhat=");
-//	for (int h=0; h<1; h++)
-//	{
-//		 printf("%f ", vhat(h));
 //	}
-//	printf("\n");
 	
 	return vhat;
 }
 
 /* ----------------------------------------------------------------------------*
- * FloatNDArray updateSlope(FloatNDArray v, FloatNDArray vhat, float alpha,    *
+ * FloatNDArray observeSlope(float g, float r, FloatNDArray pc,                *
+ *  FloatNDArray pd, int32NDArray Rx, FloatNDArray v,                          *
+ *  int32NDArray xc, int32NDArray xd)                                          *
+ * ----------------------------------------------------------------------------*
+ * Observe the slopes.
+ *
+ * @param g
+ * @param r
+ * @param pc
+ * @param pd
+ * @param Rx
+ * @param v
+ * @param xc
+ * @param xd
+ *
+ * @return vhat
+ *
+ */
+
+FloatNDArray observeSlope(float g, float r,
+	FloatNDArray pc, FloatNDArray pd, 
+	int32NDArray Rx, FloatNDArray v,
+	int32NDArray xc, int32NDArray xd)
+{
+	return observeSlopeDerivative(g, r, pc, pd, Rx, v, xc, xd);
+}
+
+/* ----------------------------------------------------------------------------*
+ * FloatNDArray updateSlope(FloatNDArray v, float vhat, float alpha,    *
  *  octave_int32 Rx)                                                           *
  * ----------------------------------------------------------------------------*
  * Update the vector z with v.
@@ -99,19 +124,25 @@ FloatNDArray observeSlope(float g, float r,
  *
  */
 
-FloatNDArray updateSlope(FloatNDArray v, FloatNDArray vhat, float alpha,
+FloatNDArray updateSlope(FloatNDArray v, float vhat, float alpha,
 	octave_int32 Rx, float delta)
 {
 	FloatNDArray z(v.dims());
 	
-//	printf("delta=%f\n", delta);
-	
 	z.insert(v, 0, 0);
 	
-	for (int m=floor(fmax((float)Rx-delta, 0)); m<floor(fmin((float)Rx+delta, (float)v.dim1())); m++)
+	for (int m=floor(fmax((float)Rx-delta, 0)); m<=floor(fmin((float)Rx+delta, (float)v.dim1())); m++)
 	{
-		z(m) = (1-(1-gama)*alpha)*v(Rx)+alpha*vhat(0);
+		z(m) = (1-(1-gama)*alpha)*v(Rx)+alpha*vhat;
 	}
+	
+//	if ((int)Rx+1 < (float)v.dim1())
+//	{
+//		for (int m=(int)Rx+1; m<floor(fmin((float)Rx+delta, (float)v.dim1())); m++)
+//		{
+//			z(m) = (1-(1-gama)*alpha)*v(Rx)+alpha*vhat(1);
+//		}
+//	}
 	
 	return z;
 }
