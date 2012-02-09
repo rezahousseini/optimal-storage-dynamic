@@ -17,9 +17,9 @@ int32NDArray init(octave_scalar_map S)
 	q0 = S.contents("q0").array_value();
 	C = S.contents("C").array_value();
 	D = S.contents("D").array_value();
-	nul = S.contents("nul").array_value();
-	nuc = S.contents("nuc").array_value();
-	nud = S.contents("nud").array_value();
+	etal = S.contents("etal").array_value();
+	etac = S.contents("etac").array_value();
+	etad = S.contents("etad").array_value();
 	DeltaCmax = S.contents("DeltaCmax").array_value();
 	DeltaDmax = S.contents("DeltaDmax").array_value();
 	
@@ -37,7 +37,7 @@ int32NDArray init(octave_scalar_map S)
 	}
 	
 	numSfin = set_fin.sum(0).elem(0);
-	numR = int32NDArray(dim_vector(numSfin,1));
+	numR = int32NDArray(dim_vector(numSfin, 1));
 	
 	int32NDArray R(dim_vector(numSfin, numN), 0);
 	
@@ -47,7 +47,7 @@ int32NDArray init(octave_scalar_map S)
 		if ((int)set_fin(k) == 1)
 		{
 			numR(count) = floor(rho*Qmax(k))+1; // Scale max capacity
-			R(count,0) = floor(rho*q0(k)); // Storage level initialization; TODO checking for q0 <= Qmax
+			R(count, 0) = floor(rho*q0(k)); // Storage level initialization; TODO checking for q0 <= Qmax
 			count = count+1;
 		}
 	}

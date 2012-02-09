@@ -4,7 +4,7 @@
 FloatNDArray observeSlopeDual(float g, float r,
 	FloatNDArray pc, FloatNDArray pd, 
 	int32NDArray Rx, FloatNDArray v,
-	int32NDArray xc, int32NDArray xd)
+	FloatNDArray xc, FloatNDArray xd)
 {
 	opt_sol retce = solveLinProg(g, r, pc, pd, Rx, v, xc, xd);
 	
@@ -14,25 +14,24 @@ FloatNDArray observeSlopeDual(float g, float r,
 FloatNDArray observeSlopeDerivative(float g, float r,
 	FloatNDArray pc, FloatNDArray pd, 
 	int32NDArray Rx, FloatNDArray v,
-	int32NDArray xc, int32NDArray xd)
+	FloatNDArray xc, FloatNDArray xd)
 {
 	FloatNDArray vhat(dim_vector(numSfin, 1));
 	opt_sol retup, retlo, retce;
-	int32NDArray Rxlo(dim_vector(numSfin,1));
-	int32NDArray Rxup(dim_vector(numSfin,1));
+	int32NDArray Rxlo(Rx);
+	int32NDArray Rxup(Rx);
 	
 	retce = solveLinProg(g, r, pc, pd, Rx, v, xc, xd);
 	
 	for (int m=0; m<numSfin; m++)
 	{
-		if (Rx(m) == floor(rho*Qmax(m)))
+		if ((int)Rx(m)+1 == (int)v.dim1())
 		{
 			// There's no value in adding more than the maximum
 			vhat(m) = (octave_int32)0;
 		}
 		else
 		{
-			Rxup.insert(Rx, 0, 0);
 			Rxup(m) = Rx(m)+(octave_int32)1;
 			
 			retup = solveLinProg(g, r, pc, pd, Rxup, v, xc, xd);
@@ -41,40 +40,26 @@ FloatNDArray observeSlopeDerivative(float g, float r,
 		}
 	}
 	
-//	for (int m=0; m<numSfin; m++)
+//	int count = 0;
+//	for (int m=0; m<numS; m++)
 //	{
-//		if (Rx(m) == (octave_int32)0)
+//		if ((int)set_fin(m) == 1)
 //		{
-//			Rxup.insert(Rx, 0, 0);
-//			Rxup(m) = Rx(m)+(octave_int32)1;
+//			if (Rx(count) == floor(rho*Qmin(m)))
+//			{
+//				// There's no value in adding more than the maximum
+//				vhat(count) = retce.F;//(octave_int32)0;
+//			}
+//			else
+//			{
+//				Rxlo(count) = Rx(count)-(octave_int32)1;
+//				
+//				retlo = solveLinProg(g, r, pc, pd, Rxlo, v, xc, xd);
+//				
+//				vhat(count) = retce.F-retlo.F;
+//			}
 //			
-//			retup = solveLinProg(g, r, pc, pd, Rxup, v, xc, xd);
-//			
-//			vhat(m, 0) = (octave_int32)0;
-//			vhat(m, 1) = retup.F-retce.F;
-//		}
-//		else if (Rx(m) == floor(rho*Qmax(m)))
-//		{
-//			Rxlo.insert(Rx, 0, 0);
-//			Rxlo(m) = Rx(m)-(octave_int32)1;
-//			
-//			retlo = solveLinProg(g, r, pc, pd, Rxlo, v, xc, xd);
-//			
-//			vhat(m, 0) = retce.F-retlo.F;
-//			vhat(m, 1) = (octave_int32)0;;
-//		}
-//		else
-//		{
-//			Rxlo.insert(Rx, 0, 0);
-//			Rxup.insert(Rx, 0, 0);
-//			Rxlo(m) = Rx(m)-(octave_int32)1;
-//			Rxup(m) = Rx(m)+(octave_int32)1;
-//			
-//			retlo = solveLinProg(g, r, pc, pd, Rxlo, v, xc, xd);
-//			retup = solveLinProg(g, r, pc, pd, Rxup, v, xc, xd);
-//			
-//			vhat(m, 0) = retce.F-retlo.F;
-//			vhat(m, 1) = retup.F-retce.F;
+//			count = count+1;
 //		}
 //	}
 	
@@ -84,7 +69,7 @@ FloatNDArray observeSlopeDerivative(float g, float r,
 /* ----------------------------------------------------------------------------*
  * FloatNDArray observeSlope(float g, float r, FloatNDArray pc,                *
  *  FloatNDArray pd, int32NDArray Rx, FloatNDArray v,                          *
- *  int32NDArray xc, int32NDArray xd)                                          *
+ *  FloatNDArray xc, FloatNDArray xd)                                          *
  * ----------------------------------------------------------------------------*
  * Observe the slopes.
  *
@@ -104,9 +89,9 @@ FloatNDArray observeSlopeDerivative(float g, float r,
 FloatNDArray observeSlope(float g, float r,
 	FloatNDArray pc, FloatNDArray pd, 
 	int32NDArray Rx, FloatNDArray v,
-	int32NDArray xc, int32NDArray xd)
+	FloatNDArray xc, FloatNDArray xd)
 {
-	return observeSlopeDerivative(g, r, pc, pd, Rx, v, xc, xd);
+	return observeSlopeDual(g, r, pc, pd, Rx, v, xc, xd);
 }
 
 /* ----------------------------------------------------------------------------*
@@ -127,47 +112,59 @@ FloatNDArray observeSlope(float g, float r,
 FloatNDArray updateSlope(FloatNDArray v, float vhat, float alpha,
 	octave_int32 Rx, float delta)
 {
-	FloatNDArray z(v.dims());
+	FloatNDArray z(v);
 	
-	z.insert(v, 0, 0);
+//	printf("vhat=%f\n", vhat);
 	
-	for (int m=floor(fmax((float)Rx-delta, 0)); m<=floor(fmin((float)Rx+delta, (float)v.dim1())); m++)
+	int lower = floor(fmax((float)Rx-delta, 0));
+	int upper = floor(fmin((float)Rx+delta, (float)v.dim1()-1));
+	
+	for (int m=lower; m<=upper; m++)
 	{
 		z(m) = (1-(1-gama)*alpha)*v(Rx)+alpha*vhat;
 	}
 	
-//	if ((int)Rx+1 < (float)v.dim1())
-//	{
-//		for (int m=(int)Rx+1; m<floor(fmin((float)Rx+delta, (float)v.dim1())); m++)
-//		{
-//			z(m) = (1-(1-gama)*alpha)*v(Rx)+alpha*vhat(1);
-//		}
-//	}
-	
 	return z;
+}
+
+FloatNDArray projectSlopeTest(FloatNDArray z, octave_int32 Rx)
+{
+	FloatNDArray v(z.dims(), 0);
+	int numZ = (int)z.dim1();
+	FloatNDArray b(z.dims(), 0);
+	float sum = 0;
+	
+	for (int m=0; m<numZ-1; m++)
+	{
+		b(m+1) = fmin(z(m+1)-z(m), 0);
+		sum = sum+abs(b(m+1));
+	}
+	
+	for (int m=0; m<numZ-1; m++)
+	{
+		v(m+1) = v(m)+b(m+1);
+	}
+	
+	return v+z.sum(0).elem(0)/numZ;
 }
 
 FloatNDArray projectSlopeLeveling(FloatNDArray z, octave_int32 Rx)
 {
-	FloatNDArray v(z.dims());
+	FloatNDArray v(z);
 	int numZ = (int)z.dim1();
-	
-	v.insert(z, 0, 0);
 	
 	for (int r=(int)Rx+1; r<numZ; r++)
 	{
-		if (v(r) > z(Rx))
+		if (v(r) < z(Rx))
 		{
-			
 			v(r) = z(Rx);
 		}
 	}
 	
 	for (int r=(int)Rx-1; r>=0; r--)
 	{
-		if (v(r) < z(Rx))
+		if (v(r) > z(Rx))
 		{
-			
 			v(r) = z(Rx);
 		}
 	}
@@ -177,22 +174,11 @@ FloatNDArray projectSlopeLeveling(FloatNDArray z, octave_int32 Rx)
 
 FloatNDArray projectSlopeMeanLeveling(FloatNDArray z, octave_int32 Rx)
 {
-	FloatNDArray v(z.dims());
+	FloatNDArray v(z);
 	int numZ = (int)z.dim1();
 	int violation = 0;
 	FloatNDArray sumVec;
 	float sum;
-	
-//	printf("Rx=%i\n", (int)Rx);
-//	
-//	printf("z=");
-//	for (int m=0; m<numZ; m++)
-//	{
-//		printf("%f ", z(m));
-//	}
-//	printf("\n");
-	
-	v.insert(z, 0, 0);
 	
 	// r < Rx
 	for (int level=(int)Rx-1; level>=0; level--)
@@ -200,7 +186,7 @@ FloatNDArray projectSlopeMeanLeveling(FloatNDArray z, octave_int32 Rx)
 		if (z(level) < z(Rx))
 		{
 			violation = (int)Rx-level;
-			sumVec = z.linear_slice(level, (int)Rx+1);
+			sumVec = z.linear_slice(level, (int)Rx);
 			sum = sumVec.sum(0).elem(0);
 		}
 	}
@@ -210,32 +196,33 @@ FloatNDArray projectSlopeMeanLeveling(FloatNDArray z, octave_int32 Rx)
 		FloatNDArray vmean(dim_vector(violation+1, 1), sum/(violation+1));
 		v.insert(vmean, (int)Rx-violation, 0);
 	}
-	else
+	
+	violation = 0;
+	// r > Rx
+	for (int level=(int)Rx+1; level<numZ; level++)
 	{
-		// r > Rx
-		for (int level=(int)Rx+1; level<numZ; level++)
+		if (z(level) > v(Rx))
 		{
-			if (z(level) > z(Rx))
-			{
-				violation = level-(int)Rx;
-				sumVec = z.linear_slice(Rx, level+1);
-				sum = sumVec.sum(0).elem(0);
-			}
-		}
-		
-		if (violation > 0)
-		{
-			FloatNDArray vmean(dim_vector(violation+1, 1), sum/(violation+1));
-			v.insert(vmean, Rx, 0);
+			violation = level-(int)Rx;
+			sumVec = z.linear_slice(Rx, level);
+			sum = sumVec.sum(0).elem(0);
 		}
 	}
 	
-//	printf("v=");
-//	for (int m=0; m<numZ; m++)
-//	{
-//		printf("%f ", v(m));
-//	}
-//	printf("\n");
+	if (violation > 0)
+	{
+		FloatNDArray vmean;
+		if (sum/(violation+1) > (float)v.min().elem(0))
+		{
+			vmean = FloatNDArray(dim_vector(numZ-(int)Rx, 1), (float)v.min().elem(0));
+		}
+		else
+		{
+			vmean = FloatNDArray(dim_vector(violation+1, 1), sum/(violation+1));
+		}
+		
+		v.insert(vmean, Rx, 0);
+	}
 	
 	return v;
 }
@@ -261,8 +248,8 @@ FloatNDArray projectSlopeQuadProg(FloatNDArray z, octave_int32 Rx)
 		
 		if (r < numZ-1)
 		{
-			CI[r][r] = 1;
-			CI[r+1][r] = -1;
+			CI[r][r] = -1;
+			CI[r+1][r] = 1;
 		}
 	}
 	
@@ -270,7 +257,93 @@ FloatNDArray projectSlopeQuadProg(FloatNDArray z, octave_int32 Rx)
 	
 	for (int r=0; r<numZ; r++)
 	{
-		v(r) = x[r];
+		v(r) = x[r]/2;
+	}
+	
+	return v;
+}
+
+FloatNDArray simpleLinReg(FloatNDArray y, float x0, float x1)
+{
+	float xmean = (x1-x0)/2*(x0+x1)/(x1-x0);
+	float ymean = y.sum(0).elem(0)/(float)y.dim1();
+	FloatNDArray c(dim_vector(2, 1));
+	
+	float c1N = 0;
+	float c1D = 0;
+	
+//	printf("y=");
+//	for (int m=0; m<(int)y.dim1(); m++)
+//	{
+//		printf("%f ", y(m));
+//	}
+//	printf("\n");
+	
+	for (int x=0; x<(int)y.dim1(); x++)
+	{
+		c1N = c1N+((float)x-xmean)*(y(x)-ymean);
+		c1D = c1D+pow((float)x-xmean, 2);
+	}
+	
+	if (x0 == x1)
+	{
+		c(1) = 0;
+		c(0) = 0;
+	}
+	else
+	{
+		c(1) = c1N/c1D;
+		c(0) = ymean-c(1)*xmean;
+	}
+	
+//	printf("c0=%f\n", c(0));
+//	printf("c1=%f\n", c(1));
+	
+	return c;
+}
+
+FloatNDArray projectSlopeLinReg(FloatNDArray z, octave_int32 Rx)
+{
+	FloatNDArray v(z.dims());
+	int numZ = (int)z.dim1();
+	
+	FloatNDArray c;
+	
+	int step = 10;
+	int n = floor(numZ/step);
+	
+	FloatNDArray C(dim_vector(2, step));
+	
+	for (int r=step-1; r>=0; r--)
+	{
+		if (r == step-1)
+		{
+			c = simpleLinReg(z.linear_slice(r*n, numZ), r*n, numZ-1);
+			
+			if (c(1) > 0) C(1, r) = 0;
+			else C(1, r) = c(1);
+			
+			C(0, r) = c(0);
+			
+			for (int x=n*r; x<numZ; x++)
+			{
+				v(x) = C(0, r)+C(1, r)*(float)x;
+			}
+		}
+		else
+		{
+			c = simpleLinReg(z.linear_slice(r*n, r*n+n), r*n, r*n+n);
+			
+			if (c(1) > 0) C(1, r) = C(1, r+1);
+			else C(1, r) = c(1);
+			
+			C(0, r) = C(0, r+1)+C(1, r+1)*(r+1)*n-C(1, r)*(r+1)*n;
+			
+			for (int x=n*r; x<n*(r+1); x++)
+			{
+				v(x) = C(0, r)+C(1, r)*(float)x;
+			}
+		}
 	}
 	
 	return v;
@@ -290,5 +363,23 @@ FloatNDArray projectSlopeQuadProg(FloatNDArray z, octave_int32 Rx)
  
 FloatNDArray projectSlope(FloatNDArray z, octave_int32 Rx)
 {
-	return projectSlopeMeanLeveling(z, Rx);
+//	printf("Rx=%i\n", (int)Rx);
+//	
+//	printf("z=");
+//	for (int m=0; m<(int)z.dim1(); m++)
+//	{
+//		printf("%f ", z(m));
+//	}
+//	printf("\n");
+	
+	FloatNDArray v = projectSlopeLeveling(z, Rx);
+	
+//	printf("v=");
+//	for (int m=0; m<(int)z.dim1(); m++)
+//	{
+//		printf("%f ", v(m));
+//	}
+//	printf("\n");
+
+	return v;
 }

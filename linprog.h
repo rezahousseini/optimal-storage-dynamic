@@ -26,7 +26,7 @@ void initLinProg(void)
 	glp_add_rows(lp, 1+2*numSfin);//+numS);
 	glp_add_cols(lp, 2*numS+numV);
 	glp_set_obj_name(lp, "profit");
-	glp_set_obj_dir(lp, GLP_MAX);
+	glp_set_obj_dir(lp, GLP_MIN);
 	int ind[2*numS+numV+1];
 	double val[2*numS+numV+1];
 	int count;
@@ -172,48 +172,44 @@ opt_sol solveLinProg(float g, float r, FloatNDArray pc, FloatNDArray pd,
 	// Structural variable bounds
 	for (int m=1; m<=numS; m++)
 	{
-		// uc_(k-1)-DeltaCmax <= uc_k <= uc_(k-1)+DeltaCmax
-		glp_set_col_bnds(lp, m, GLP_DB,
-			floor(T*nul(m-1)*nuc(m-1)*fmax(
-				0, (xc(m-1)-rho*DeltaCmax(m-1))
-			)),
-			floor(T*nul(m-1)*nuc(m-1)*fmin(
-				rho*C(m-1), (xc(m-1)+rho*DeltaCmax(m-1))
-			))
-		);
-		
-		// ud_(k-1)-DeltaDmax <= ud_k <= ud_(k-1)+DeltaDmax
-		glp_set_col_bnds(lp, numS+m, GLP_DB,
-			floor(T*nul(m-1)/nud(m-1)*fmax(
-				0, (xd(m-1)-rho*DeltaDmax(m-1))
-			)),
-			floor(T*nul(m-1)/nud(m-1)*fmin(
-				rho*D(m-1), (xd(m-1)+rho*DeltaDmax(m-1))
-			))
-		);
-		
 //		// uc_(k-1)-DeltaCmax <= uc_k <= uc_(k-1)+DeltaCmax
-//		glp_set_col_bnds(lp, m, GLP_DB,
-//			floor(fmax(0, T*(xc(m-1)-rho*DeltaCmax(m-1)))),
-//			floor(fmin(
-//				T*rho*C(m-1), T*(xc(m-1)+rho*DeltaCmax(m-1))
-//			))
-//		);
+//		float xc_max = floor(T*nuc(m-1)*fmin(rho*C(m-1), (xc(m-1)+rho*DeltaCmax(m-1))));
+//		float xc_min = floor(T*nuc(m-1)*fmax(0, (xc(m-1)-rho*DeltaCmax(m-1))));
+//		
+//		if (xc_max == xc_min)
+//		{
+//			glp_set_col_bnds(lp, m, GLP_FX, xc_min, xc_max);
+//		}
+//		else
+//		{
+//			glp_set_col_bnds(lp, m, GLP_DB, xc_min, xc_max);
+//		}
 //		
 //		// ud_(k-1)-DeltaDmax <= ud_k <= ud_(k-1)+DeltaDmax
-//		glp_set_col_bnds(lp, numS+m, GLP_DB,
-//			floor(fmax(0, T*(xd(m-1)-rho*DeltaDmax(m-1)))),
-//			floor(fmin(
-//				T*rho*D(m-1), T*(xd(m-1)+rho*DeltaDmax(m-1))
-//			))
-//		);
+//		float xd_max = floor(T/nud(m-1)*fmin(rho*D(m-1), (xd(m-1)+rho*DeltaDmax(m-1))));
+//		float xd_min = floor(T/nud(m-1)*fmax(0, (xd(m-1)-rho*DeltaDmax(m-1))));
+//		
+//		if (xd_max == xd_min)
+//		{
+//			glp_set_col_bnds(lp, numS+m, GLP_FX, xd_min, xd_max);
+//		}
+//		else
+//		{
+//			glp_set_col_bnds(lp, numS+m, GLP_DB, xd_min, xd_max);
+//		}
+		
+		// uc_(k-1)-DeltaCmax <= uc_k <= uc_(k-1)+DeltaCmax
+		glp_set_col_bnds(lp, m, GLP_DB, 0, floor(rho*C(m-1)));
+		
+		// ud_(k-1)-DeltaDmax <= ud_k <= ud_(k-1)+DeltaDmax
+		glp_set_col_bnds(lp, numS+m, GLP_DB, 0, floor(rho*D(m-1)));
 	}
 	
 	// Objectiv coefficient
 	for (int m=1; m<=numS; m++)
 	{
-		glp_set_obj_coef(lp, m, -pc(m-1)); // -pc*uc
-		glp_set_obj_coef(lp, numS+m, -pd(m-1)); // -pd*ud
+		glp_set_obj_coef(lp, m, floor(rho*pc(m-1))); // -pc*uc
+		glp_set_obj_coef(lp, numS+m, floor(rho*pd(m-1))); // -pd*ud
 		
 		if ((int)set_fin(m-1) == 1)
 		{
@@ -232,8 +228,8 @@ opt_sol solveLinProg(float g, float r, FloatNDArray pc, FloatNDArray pd,
 //				floor(nul(m-1)*(float)R(count-1))
 //			);
 			glp_set_row_bnds(lp, 1+count, GLP_FX,
-				R(count-1),
-				R(count-1)
+				floor((float)R(count-1)),
+				floor((float)R(count-1))
 			);
 			
 			// Minimum and Maximum capacity constraint
@@ -249,10 +245,6 @@ opt_sol solveLinProg(float g, float r, FloatNDArray pc, FloatNDArray pd,
 			
 			count = count+1;
 		}
-		
-//		// Velocity of power change constraint
-//		// -DeltaDmax <= (ud_k-uc_k)-(ud_(k-1)-uc_(k-1)) <= DeltaCmax
-//		glp_set_row_bnds(lp, 1+2*numSfin+m, GLP_DB, -rho*DeltaDmax(m-1)+(xd(m-1)-xc(m-1)), rho*DeltaCmax(m-1)+(xd(m-1)-xc(m-1)));
 	}
 	
 	// Node balance constraint
@@ -267,6 +259,11 @@ opt_sol solveLinProg(float g, float r, FloatNDArray pc, FloatNDArray pd,
 	if (ret != 0)
 	{
 		printf("No simplex solution. Error %i\n", ret);
+		for (int m=1; m<=numS; m++)
+		{
+			printf("xc_%i=%f\n", m, xc(m-1));
+			printf("xd_%i=%f\n", m, xd(m-1));
+		}
 	}
 	
 	retval.F = glp_get_obj_val(lp);
@@ -276,8 +273,20 @@ opt_sol solveLinProg(float g, float r, FloatNDArray pc, FloatNDArray pd,
 	{
 		retval.xc(m-1) = glp_get_col_prim(lp, m);
 		retval.xd(m-1) = glp_get_col_prim(lp, numS+m);
+		
+		if (glp_get_col_prim(lp, m) < 0)
+		{
+			printf("xc_%i=%f\n", m, glp_get_col_prim(lp, m));
+		}
+		
+		if (glp_get_col_prim(lp, numS+m) < 0)
+		{
+			printf("xd_%i=%f\n", m, glp_get_col_prim(lp, numS+m));
+		}
+		
 		C = C-glp_get_col_prim(lp, m)/rho*pc(m-1)-glp_get_col_prim(lp, numS+m)/rho*pd(m-1);
 	}
+//	printf("\n");
 	retval.C = C;
 	
 	for (int m=1; m<=numSfin; m++)

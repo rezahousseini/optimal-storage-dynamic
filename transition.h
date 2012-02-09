@@ -25,7 +25,7 @@ int32NDArray transitionResource(int32NDArray R, FloatNDArray xc,
 		{
 			// Resource transition function
 //			Rxerr = nul(m)*(float)R(count)+T*(nuc(m)*xc(m)-(1/nud(m))*xd(m));
-			Rxerr = (float)R(count)+T*(xc(m)-xd(m));
+			Rxerr = (float)R(count)+xc(m)-xd(m);
 			
 			if (Rxerr < rho*Qmin(m))
 			{
@@ -40,13 +40,6 @@ int32NDArray transitionResource(int32NDArray R, FloatNDArray xc,
 			count = count+1;
 		}
 	}
-	
-//	printf("Rx=");
-//	for (int m=0; m<numSfin; m++)
-//	{
-//		 printf("%i ", (int)Rx(m));
-//	}
-//	printf("\n");
 	
 	return Rx;
 }
