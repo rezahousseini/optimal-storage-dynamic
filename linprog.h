@@ -1,15 +1,15 @@
 struct opt_sol
 {
 	float F;
-	float C;
 	FloatNDArray xc;
 	FloatNDArray xd;
+	FloatNDArray xh;
 	FloatNDArray vhat;
 	FloatNDArray phi;
 };
 
 /* ----------------------------------------------------------------------------*
- * void initLinProg(void)                                                          *
+ * void initLinProg(void)                                                      *
  * ----------------------------------------------------------------------------*
  * Initiat the linear programming problem.
  *
@@ -23,112 +23,170 @@ void initLinProg(void)
 {
 	lp = glp_create_prob();
 	int numV = (int)numR.sum(0).elem(0)-numSfin;
-	glp_add_rows(lp, 1+2*numSfin);//+numS);
-	glp_add_cols(lp, 2*numS+numV);
-	glp_set_obj_name(lp, "profit");
+	glp_add_rows(lp, 2*numSfin+2);
+	glp_add_cols(lp, 3*numS+numV);
+	glp_set_obj_name(lp, "cost");
 	glp_set_obj_dir(lp, GLP_MIN);
-	int ind[2*numS+numV+1];
-	double val[2*numS+numV+1];
+	int ind[3*numS+numV+1];
+	double val[3*numS+numV+1];
 	int count;
 	char str[80];
 	int index;
 	
-	for (int k=1; k<=2*numS+numV; k++)
+	for (int k=0; k<=3*numS+numV; k++)
 	{
 		ind[k] = k; // XXX ind and val start at 1 not at 0!!!!
+		val[k] = 0;
 	}
 	
-	// Structural variable bounds
-	index = 0;
-	for (int m=0; m<numSfin; m++)
-	{
-		sprintf(str, "uc_%i", m+1);
-		glp_set_col_name(lp, m+1, str);
-		
-		sprintf(str, "ud_%i", m+1);
-		glp_set_col_name(lp, numS+m+1, str);
-		
-		for (int k=1; k<=(int)numR(m)-1; k++)
-		{
-			sprintf(str, "y_%i_%i", m+1, k);
-			glp_set_col_name(lp, 2*numS+index+k, str);
-			glp_set_col_bnds(lp, 2*numS+index+k, GLP_DB, 0, 1); // 0 <= ytr <= 1
-		}
-		index = index+(int)numR(m)-1;
-	}
-	
-	// Node balance constraint
-	// uc-ud = g-r
-	glp_set_row_name(lp, 1, "balance");
+	// Structural variable bounds for u
 	for (int m=1; m<=numS; m++)
 	{
-		val[m] = 1;//nuc(m-1); // uc
-		val[numS+m] = -1;//-1/nud(m-1); // -ud
-	}
-	for (int m=1; m<=numV; m++)
-	{
-		val[2*numS+m] = 0;
-	}
-	glp_set_mat_row(lp, 1, 2*numS+numV, ind, val);
-	
-	// Value function constraint
-	// -uc+ud+sum{i in numR}ytr = R
-	count = 0;
-	index = 0;
-	for (int m=1; m<=numS; m++)
-	{
-		// XXX Which variables are integer?
-//		glp_set_col_kind(lp, m, GLP_IV);
-//		glp_set_col_kind(lp, numS+m, GLP_IV);
+		sprintf(str, "uc_%i", m);
+		glp_set_col_name(lp, m, str); // u charge
+		
+		sprintf(str, "ud_%i", m);
+		glp_set_col_name(lp, numS+m, str); // u discharge
+		
+		sprintf(str, "uh_%i", m);
+		glp_set_col_name(lp, 2*numS+m, str); // u hold
 		
 		if ((int)set_fin(m-1) == 1)
 		{
-			
-			
-			// Reset the val vector to 0
-			for (int n=1; n<=2*numS+numV; n++)
-			{
-				val[n] = 0;
-			}
-			
-			val[m] = -1;//-nuc(m-1); // -uc
-			val[numS+m] = 1;//1/nud(m-1); // ud
-			
-			for (int k=1; k<=(int)numR(count)-1; k++)
-			{
-				val[2*numS+index+k] = 1;
-			}
-			index = index+(int)numR(count)-1;
-			
-			sprintf(str, "value_function_%i", count+1);
-			glp_set_row_name(lp, 1+count+1, str);
-			glp_set_mat_row(lp, 1+count+1, 2*numS+numV, ind, val);
-			count = count+1;
+			glp_set_col_bnds(lp, 2*numS+m, GLP_DB, 
+				floor(rho*Qmin(m-1)),
+				floor(rho*Qmax(m-1))
+			);
 		}
+		else glp_set_col_bnds(lp, 2*numS+m, GLP_FX, 0, 0);
 	}
 	
-	// Minimum and Maximum capacity constraint
-	// Qmin-R <= uc-ud <= Qmax-R
+	// Structural variable bounds for y
+	index = 0;
+	for (int m=1; m<=numSfin; m++)
+	{
+		for (int k=1; k<=(int)numR(m-1)-1; k++)
+		{
+			sprintf(str, "y_%i_%i", m, k);
+			glp_set_col_name(lp, 3*numS+index+k, str);
+			glp_set_col_bnds(lp, 3*numS+index+k, GLP_DB, 0, 1); // 0 <= yt(r) <= 1
+		}
+		
+		index = index+(int)numR(m-1)-1;
+	}
+	
+	// Node balance constraint
+	// -uc+ud+uh = R
 	count = 1;
 	for (int m=1; m<=numS; m++)
 	{
 		if ((int)set_fin(m-1) == 1)
 		{
 			// Reset the val vector to 0
-			for (int n=1; n<=2*numS+numV; n++)
+			for (int n=1; n<=3*numS+numV; n++)
 			{
 				val[n] = 0;
 			}
 			
-			val[m] = 1;//nuc(m-1); // uc
-			val[numS+m] = -1;//-1/nud(m-1); // -ud
+			val[m] = -1;// -uc
+			val[numS+m] = 1;// ud
+			val[2*numS+m] = 1;// uh
 			
-			sprintf(str, "capacity_bound_%i", count);
-			glp_set_row_name(lp, 1+numSfin+count, str);
-			glp_set_mat_row(lp, 1+numSfin+count, 2*numS+numV, ind, val);
+			sprintf(str, "balance_%i", m);
+			glp_set_row_name(lp, count, str);
+			glp_set_mat_row(lp, count, 3*numS+numV, ind, val);
 			count = count+1;
 		}
 	}
+	
+	// Value function constraint
+	// -uh+sum{r=1...numR}yt(r) = 0
+	count = 1;
+	index = 0;
+	for (int m=1; m<=numS; m++)
+	{
+		if ((int)set_fin(m-1) == 1)
+		{
+			// Reset the val vector to 0
+			for (int n=1; n<=3*numS+numV; n++)
+			{
+				val[n] = 0;
+			}
+			
+			val[m] = 0;// 0*uc
+			val[numS+m] = 0;// 0*ud
+			val[2*numS+m] = -1;// -uh
+			
+			for (int k=1; k<=(int)numR(count-1)-1; k++)
+			{
+				val[3*numS+index+k] = 1;
+			}
+			index = index+(int)numR(count-1)-1;
+			
+			sprintf(str, "value_function_%i", count);
+			glp_set_row_name(lp, numSfin+count, str);
+			glp_set_mat_row(lp, numSfin+count, 3*numS+numV, ind, val);
+			glp_set_row_bnds(lp, numSfin+count, GLP_FX, 0, 0);
+			
+			count = count+1;
+		}
+	}
+	
+//	// Minimum and Maximum capacity constraint
+//	// Qmin <= uh <= Qmax
+//	count = 1;
+//	for (int m=1; m<=numS; m++)
+//	{
+//		if ((int)set_fin(m-1) == 1)
+//		{
+//			// Reset the val vector to 0
+//			for (int n=1; n<=3*numS+numV; n++)
+//			{
+//				val[n] = 0;
+//			}
+//			
+//			val[m] = 0;// 0*uc
+//			val[numS+m] = 0;// 0*ud
+//			val[2*numS+m] = 1;// uh
+//			
+//			sprintf(str, "capacity_bound_%i", count);
+//			glp_set_row_name(lp, 2*numSfin+count, str);
+//			glp_set_mat_row(lp, 2*numSfin+count, 3*numS+numV, ind, val);
+//			glp_set_row_bnds(lp, 2*numSfin+count, GLP_DB, floor(rho*Qmin(m-1)), floor(rho*Qmax(m-1)));
+//			
+//			count = count+1;
+//		}
+//	}
+	
+	// sum uc = ((g-r)+abs(g-r))/2
+	// Reset the val vector to 0
+	for (int n=1; n<=3*numS+numV; n++)
+	{
+		val[n] = 0;
+	}
+	
+	for (int m=1; m<=numS; m++)
+	{
+		val[m] = 1;// uc
+	}
+	sprintf(str, "input_flow");
+	glp_set_row_name(lp, 2*numSfin+1, str);
+	glp_set_mat_row(lp, 2*numSfin+1, 3*numS+numV, ind, val);
+	
+	// sum ud = ((r-g)+abs(r-g))/2
+	// Reset the val vector to 0
+	for (int n=1; n<=3*numS+numV; n++)
+	{
+		val[n] = 0;
+	}
+	
+	for (int m=1; m<=numS; m++)
+	{
+		val[numS+m] = 1; // ud
+	}
+	sprintf(str, "output_flow");
+	glp_set_row_name(lp, 2*numSfin+2, str);
+	glp_set_mat_row(lp, 2*numSfin+2, 3*numS+numV, ind, val);
 	
 	// Display errors and warnings
 	glp_init_smcp(&parm_lp);
@@ -162,6 +220,7 @@ opt_sol solveLinProg(float g, float r, FloatNDArray pc, FloatNDArray pd,
 	int numV = (int)numR.sum(0).elem(0)-numSfin;
 	retval.xc = FloatNDArray(dim_vector(numS, 1));
 	retval.xd = FloatNDArray(dim_vector(numS, 1));
+	retval.xh = FloatNDArray(dim_vector(numS, 1));
 	retval.vhat = FloatNDArray(dim_vector(numSfin, 1));
 	retval.phi = FloatNDArray(dim_vector(numV, 1));
 	int index = 0;
@@ -172,32 +231,6 @@ opt_sol solveLinProg(float g, float r, FloatNDArray pc, FloatNDArray pd,
 	// Structural variable bounds
 	for (int m=1; m<=numS; m++)
 	{
-//		// uc_(k-1)-DeltaCmax <= uc_k <= uc_(k-1)+DeltaCmax
-//		float xc_max = floor(T*nuc(m-1)*fmin(rho*C(m-1), (xc(m-1)+rho*DeltaCmax(m-1))));
-//		float xc_min = floor(T*nuc(m-1)*fmax(0, (xc(m-1)-rho*DeltaCmax(m-1))));
-//		
-//		if (xc_max == xc_min)
-//		{
-//			glp_set_col_bnds(lp, m, GLP_FX, xc_min, xc_max);
-//		}
-//		else
-//		{
-//			glp_set_col_bnds(lp, m, GLP_DB, xc_min, xc_max);
-//		}
-//		
-//		// ud_(k-1)-DeltaDmax <= ud_k <= ud_(k-1)+DeltaDmax
-//		float xd_max = floor(T/nud(m-1)*fmin(rho*D(m-1), (xd(m-1)+rho*DeltaDmax(m-1))));
-//		float xd_min = floor(T/nud(m-1)*fmax(0, (xd(m-1)-rho*DeltaDmax(m-1))));
-//		
-//		if (xd_max == xd_min)
-//		{
-//			glp_set_col_bnds(lp, numS+m, GLP_FX, xd_min, xd_max);
-//		}
-//		else
-//		{
-//			glp_set_col_bnds(lp, numS+m, GLP_DB, xd_min, xd_max);
-//		}
-		
 		// uc_(k-1)-DeltaCmax <= uc_k <= uc_(k-1)+DeltaCmax
 		glp_set_col_bnds(lp, m, GLP_DB, 0, floor(rho*C(m-1)));
 		
@@ -208,95 +241,63 @@ opt_sol solveLinProg(float g, float r, FloatNDArray pc, FloatNDArray pd,
 	// Objectiv coefficient
 	for (int m=1; m<=numS; m++)
 	{
-		glp_set_obj_coef(lp, m, floor(rho*pc(m-1))); // -pc*uc
-		glp_set_obj_coef(lp, numS+m, floor(rho*pd(m-1))); // -pd*ud
+		glp_set_obj_coef(lp, m, floor(rho*pc(m-1))); // pc*uc
+		glp_set_obj_coef(lp, numS+m, floor(rho*pd(m-1))); // pd*ud
+		glp_set_obj_coef(lp, 2*numS+m, 0); // 0*uh
 		
 		if ((int)set_fin(m-1) == 1)
 		{
 			for (int k=1; k<=(int)numR(m-1)-1; k++)
 			{
-//				printf("gama*v(index_v+k)=%f\n", gama*v(index_v+k));
-				glp_set_obj_coef(lp, 2*numS+index+k, gama*v(index_v+k)); // gama*y*v
+				glp_set_obj_coef(lp, 3*numS+index+k, gama*v(index_v+k)); // gama*y*v
 			}
 			index_v = index_v+(int)numR(m-1);
 			index = index+(int)numR(m-1)-1;
 			
-			// Value function constraint
-			// -uc+ud+sum{r = 0..numR-1}ytr = R
-//			glp_set_row_bnds(lp, 1+count, GLP_FX,
-//				floor(nul(m-1)*(float)R(count-1)),
-//				floor(nul(m-1)*(float)R(count-1))
-//			);
-			glp_set_row_bnds(lp, 1+count, GLP_FX,
-				floor((float)R(count-1)),
-				floor((float)R(count-1))
-			);
-			
-			// Minimum and Maximum capacity constraint
-			// Qmin-R <= uc-ud <= Qmax-R
-//			glp_set_row_bnds(lp, 1+numSfin+count, GLP_DB,
-//				floor(rho*Qmin(m-1)-nul(m-1)*(float)R(count-1)),
-//				floor(rho*Qmax(m-1)-nul(m-1)*(float)R(count-1))
-//			);
-			glp_set_row_bnds(lp, 1+numSfin+count, GLP_DB,
-				floor((rho*Qmin(m-1)-(float)R(count-1))),
-				floor((rho*Qmax(m-1)-(float)R(count-1)))
-			);
+			// Node balance constraint
+			// -uc+ud+uh = R
+			glp_set_row_bnds(lp, count, GLP_FX, (float)R(count-1), (float)R(count-1));
 			
 			count = count+1;
 		}
 	}
 	
-	// Node balance constraint
-	// uc-ud = g-r
-	glp_set_row_bnds(lp, 1, GLP_FX, floor(rho*(g-r)), floor(rho*(g-r)));
+	// sum uc = ((g-r)+abs(g-r))/2
+	glp_set_row_bnds(lp, 2*numSfin+1, GLP_FX, floor(rho*((g-r)+abs(g-r))/2), floor(rho*((g-r)+abs(g-r))/2));
+//	if (g-r < 0) glp_set_row_bnds(lp, 2*numSfin+1, GLP_FX, 0, 0);
+//	else glp_set_row_bnds(lp, 2*numSfin+1, GLP_FX, floor(rho*(g-r)), floor(rho*(g-r)));
+	
+	// sum ud = ((r-g)+abs(r-g))/2
+	glp_set_row_bnds(lp, 2*numSfin+2, GLP_FX, floor(rho*((r-g)+abs(r-g))/2), floor(rho*((r-g)+abs(r-g))/2));
+//	if (r-g < 0) glp_set_row_bnds(lp, 2*numSfin+2, GLP_FX, 0, 0);
+//	else glp_set_row_bnds(lp, 2*numSfin+2, GLP_FX, floor(rho*(r-g)), floor(rho*(r-g)));
 	
 //	glp_write_lp(lp, NULL, "linearSystem.lp");
-//	glp_write_mps(lp, GLP_MPS_FILE, NULL, "linearSystem.mps");
 	
 	// Solve
 	ret = glp_simplex(lp, &parm_lp);
-	if (ret != 0)
-	{
-		printf("No simplex solution. Error %i\n", ret);
-		for (int m=1; m<=numS; m++)
-		{
-			printf("xc_%i=%f\n", m, xc(m-1));
-			printf("xd_%i=%f\n", m, xd(m-1));
-		}
-	}
+	if (ret != 0) printf("No simplex solution. Error %i\n", ret);
 	
 	retval.F = glp_get_obj_val(lp);
-	float C = 0;
 	
 	for (int m=1; m<=numS; m++)
 	{
 		retval.xc(m-1) = glp_get_col_prim(lp, m);
 		retval.xd(m-1) = glp_get_col_prim(lp, numS+m);
+		retval.xh(m-1) = glp_get_col_prim(lp, 2*numS+m);
 		
-		if (glp_get_col_prim(lp, m) < 0)
-		{
-			printf("xc_%i=%f\n", m, glp_get_col_prim(lp, m));
-		}
-		
-		if (glp_get_col_prim(lp, numS+m) < 0)
-		{
-			printf("xd_%i=%f\n", m, glp_get_col_prim(lp, numS+m));
-		}
-		
-		C = C-glp_get_col_prim(lp, m)/rho*pc(m-1)-glp_get_col_prim(lp, numS+m)/rho*pd(m-1);
+//		printf("xc_%i=%f\n", m, glp_get_col_prim(lp, m));
+//		printf("xd_%i=%f\n", m, glp_get_col_prim(lp, numS+m));
 	}
-//	printf("\n");
-	retval.C = C;
 	
 	for (int m=1; m<=numSfin; m++)
 	{
-		retval.vhat(m-1) = glp_get_row_dual(lp, 1+m);
+		retval.vhat(m-1) = glp_get_row_dual(lp, m);
 	}
 	
 	for (int m=1; m<=numV; m++)
 	{
-		retval.phi(m-1) = glp_get_col_prim(lp, 2*numS+m);
+		retval.phi(m-1) = glp_get_col_prim(lp, 3*numS+m);
 	}
 	
 	return retval;
