@@ -24,16 +24,15 @@ int32NDArray transitionResource(int32NDArray R, FloatNDArray xc,
 		if ((int)set_fin(m) == 1)
 		{
 			// Resource transition function
-//			Rxerr = nul(m)*(float)R(count)+T*(nuc(m)*xc(m)-(1/nud(m))*xd(m));
-			Rxerr = (float)R(count)+xc(m)-xd(m);
+			Rxerr = etal(m)*(float)R(count)+etac(m)*xc(m)-xd(m)/etad(m);
 			
-			if (Rxerr < rho*Qmin(m))
+			if (Rxerr < rho*Qmin(m)/T)
 			{
-				Rx(count) = floor(rho*Qmin(m));
+				Rx(count) = floor(rho*Qmin(m)/T);
 			}
-			else if (Rxerr > rho*Qmax(m))
+			else if (Rxerr > rho*Qmax(m)/T)
 			{
-				Rx(count) = floor(rho*Qmax(m));
+				Rx(count) = floor(rho*Qmax(m)/T);
 			}
 			else Rx(count) = floor(Rxerr);
 			

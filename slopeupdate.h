@@ -114,38 +114,16 @@ FloatNDArray updateSlope(FloatNDArray v, float vhat, float alpha,
 {
 	FloatNDArray z(v);
 	
-//	printf("vhat=%f\n", vhat);
-	
 	int lower = floor(fmax((float)Rx-delta, 0));
 	int upper = floor(fmin((float)Rx+delta, (float)v.dim1()-1));
 	
 	for (int m=lower; m<=upper; m++)
 	{
-		z(m) = (1-(1-gama)*alpha)*v(Rx)+alpha*vhat;
+		z(m) = (1-(1-gama)*alpha)*v(m)+alpha*vhat;
+//		z(m) = (1-alpha)*v(Rx)+alpha*vhat;
 	}
 	
 	return z;
-}
-
-FloatNDArray projectSlopeTest(FloatNDArray z, octave_int32 Rx)
-{
-	FloatNDArray v(z.dims(), 0);
-	int numZ = (int)z.dim1();
-	FloatNDArray b(z.dims(), 0);
-	float sum = 0;
-	
-	for (int m=0; m<numZ-1; m++)
-	{
-		b(m+1) = fmin(z(m+1)-z(m), 0);
-		sum = sum+abs(b(m+1));
-	}
-	
-	for (int m=0; m<numZ-1; m++)
-	{
-		v(m+1) = v(m)+b(m+1);
-	}
-	
-	return v+z.sum(0).elem(0)/numZ;
 }
 
 FloatNDArray projectSlopeLeveling(FloatNDArray z, octave_int32 Rx)

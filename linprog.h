@@ -54,8 +54,8 @@ void initLinProg(void)
 		if ((int)set_fin(m-1) == 1)
 		{
 			glp_set_col_bnds(lp, 2*numS+m, GLP_DB, 
-				floor(rho*Qmin(m-1)),
-				floor(rho*Qmax(m-1))
+				floor(rho*Qmin(m-1)/T),
+				floor(rho*Qmax(m-1)/T)
 			);
 		}
 		else glp_set_col_bnds(lp, 2*numS+m, GLP_FX, 0, 0);
@@ -132,32 +132,6 @@ void initLinProg(void)
 		}
 	}
 	
-//	// Minimum and Maximum capacity constraint
-//	// Qmin <= uh <= Qmax
-//	count = 1;
-//	for (int m=1; m<=numS; m++)
-//	{
-//		if ((int)set_fin(m-1) == 1)
-//		{
-//			// Reset the val vector to 0
-//			for (int n=1; n<=3*numS+numV; n++)
-//			{
-//				val[n] = 0;
-//			}
-//			
-//			val[m] = 0;// 0*uc
-//			val[numS+m] = 0;// 0*ud
-//			val[2*numS+m] = 1;// uh
-//			
-//			sprintf(str, "capacity_bound_%i", count);
-//			glp_set_row_name(lp, 2*numSfin+count, str);
-//			glp_set_mat_row(lp, 2*numSfin+count, 3*numS+numV, ind, val);
-//			glp_set_row_bnds(lp, 2*numSfin+count, GLP_DB, floor(rho*Qmin(m-1)), floor(rho*Qmax(m-1)));
-//			
-//			count = count+1;
-//		}
-//	}
-	
 	// sum uc = ((g-r)+abs(g-r))/2
 	// Reset the val vector to 0
 	for (int n=1; n<=3*numS+numV; n++)
@@ -191,7 +165,6 @@ void initLinProg(void)
 	// Display errors and warnings
 	glp_init_smcp(&parm_lp);
 	parm_lp.msg_lev = GLP_MSG_ERR;
-//	parm_lp.tol_bnd = 1e-4;
 }
 
 /* --------------------------------------------------------------------------- *
@@ -232,10 +205,16 @@ opt_sol solveLinProg(float g, float r, FloatNDArray pc, FloatNDArray pd,
 	for (int m=1; m<=numS; m++)
 	{
 		// uc_(k-1)-DeltaCmax <= uc_k <= uc_(k-1)+DeltaCmax
-		glp_set_col_bnds(lp, m, GLP_DB, 0, floor(rho*C(m-1)));
+		glp_set_col_bnds(lp, m, GLP_DB,
+			floor(fmax(0, xc(m-1)-rho*DeltaCmax(m-1))),
+			floor(fmin(rho*C(m-1), xc(m-1)+rho*DeltaCmax(m-1)))
+		);
 		
 		// ud_(k-1)-DeltaDmax <= ud_k <= ud_(k-1)+DeltaDmax
-		glp_set_col_bnds(lp, numS+m, GLP_DB, 0, floor(rho*D(m-1)));
+		glp_set_col_bnds(lp, numS+m, GLP_DB,
+			floor(fmax(0, xd(m-1)-rho*DeltaDmax(m-1))),
+			floor(fmin(rho*D(m-1), xd(m-1)+rho*DeltaDmax(m-1)))
+		);
 	}
 	
 	// Objectiv coefficient

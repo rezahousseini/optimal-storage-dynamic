@@ -16,7 +16,6 @@ int numW;
 int numN;
 glp_prob *lp;
 glp_smcp parm_lp;
-glp_iocp parm_mip;
 float T;
 float rho;
 
@@ -34,16 +33,19 @@ FloatNDArray DeltaDmax;
 
 int32NDArray set_fin;
 
-const float gama = 0.5; // 0 <= gamma <= 1 for dual 0.8
-const float nu = 0.2; // for dual 0.2
-const float alpha0 = 0.6; // 0 <= alpha0 <= 1 for dual 1
-const float c0 = 10; // for dual 1
-const float sigma20 = 10; // for dual 0.1
-const float deltaStepMult = 0.6; // for dual 0.7
+const float gama = 0.5; // 0 <= gamma <= 1 0.5
+const float alpha0 = 0.8; // 0 <= alpha0 <= 1 0.8
+const float deltaStepMult = 0.8; // 0.8
+const float a = 4; // 4
+const float b = 100; // 40
+const float c = 0.5; // 0.4
+//const float nu = 0.2;
+//const float c0 = 10;
+//const float sigma20 = 1;
 
 // Own source files.
 #include "init.h"
-#include "linprog2.h"
+#include "linprog.h"
 #include "transition.h"
 #include "slopeupdate.h"
 #include "utils.h"
@@ -94,7 +96,7 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 		int32NDArray R = init(S);
 		
 		// Post-decision asset level
-		int32NDArray Rx = int32NDArray(dim_vector(numSfin, numN), 0);
+		int32NDArray Rx = int32NDArray(dim_vector(numSfin, numN));
 		
 		// Value function for the different levels
 		FloatNDArray v(dim_vector(numR.sum(0).elem(0), numN), 0);
@@ -106,25 +108,30 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 		FloatNDArray xc = FloatNDArray(dim_vector(numS, numN), 0);
 		FloatNDArray xd = FloatNDArray(dim_vector(numS, numN), 0);
 		
-//		FloatNDArray B(dim_vector((int)numR.sum(0).elem(0)-numSfin, (int)numR.sum(0).elem(0)-numSfin), 1);
-//		float lambda_gama = 0.9;
-		
 		FloatNDArray alpha(dim_vector(1, numN));
-		FloatNDArray lambda(dim_vector(1, numN), pow(alpha0, 2));
-		FloatNDArray delta(dim_vector(1, numN), alpha0);
-		FloatNDArray c(dim_vector(1, numN), c0); 
-		FloatNDArray sigma2(dim_vector(1, numN), sigma20);
-		FloatNDArray deltaStep(dim_vector(1, numN), deltaStepMult*(float)numR.max().elem(0));
+//		FloatNDArray lambda(dim_vector(1, numN), pow(alpha0, 2));
+//		FloatNDArray delta(dim_vector(1, numN), alpha0);
+//		FloatNDArray c(dim_vector(1, numN), c0); 
+//		FloatNDArray sigma2(dim_vector(1, numN), sigma20);
+		FloatNDArray deltaStep(dim_vector(numSfin, numN));
+		for (int m=0; m<numSfin; m++)
+		{
+			for (int k=0; k<numN; k++)
+			{
+				deltaStep(m, k) = deltaStepMult*(float)numR(m);
+			}
+		}
+		
+		FloatNDArray S1(dim_vector(numN, 1), 0);
+		FloatNDArray S2(dim_vector(numN, 1), 0);
+		FloatNDArray e(dim_vector(numN, 1), 0);
 		
 		// Return values
-		FloatNDArray q;
-		FloatNDArray uc;
-		FloatNDArray ud;
 		FloatNDArray cost(dim_vector(numN, numI), 0);
 		
 		initLinProg();
 		
-		for (int i=0; i<numI; i++)
+		for (int i=1; i<numI; i++)
 		{
 			smpl = randi(0,numW,numN); // Generate sample
 			
@@ -148,10 +155,10 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 				// Resource transition function
 				Rx.insert(transitionResource(R.column(k), xc.column(k), xd.column(k)), 0, k);
 				
-				cost(k, i) = cost(k, i)+g(k)*pg(k)+r(k)*pr(k);
+				cost(k, i) = g(k, smpl(k))*pg(k, smpl(k))+r(k, smpl(k))*pr(k, smpl(k));
 				for (int m=0; m<numS; m++)
 				{
-					cost(k, i) = cost(k, i)+xc(m, k)/rho*pc(m, k)+xd(m, k)/rho*pd(m, k);
+					cost(k, i) = cost(k, i)+xc(m, k)/rho*pc(m, k, smpl(k))+xd(m, k)/rho*pd(m, k, smpl(k));
 				}
 				
 				// Update step
@@ -164,7 +171,7 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 //				lambda(k) = pow(alpha(k), 2)+pow(1-(1-gama)*alpha(k), 2)*lambda(k);
 //				delta(k) = alpha(k)+(1-(1-gama)*alpha(k))*delta(k);
 				
-				alpha(k) = (100/(i+1)+1)/(100/(i+1)+1+pow((i+1), 0.7));
+				alpha(k) = alpha0*(b/i+a)/(b/i+a+pow(i, c));
 				
 				if (k < numN-1)
 				{
@@ -174,13 +181,18 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 						Rx.column(k), v.column(k+1), xc.column(k+1), xd.column(k+1)
 					);
 					
+//					e(k) = v(Rx(0, k), k)-vhat(0);
+//					S1(k) = (1-0.9)*S1(k)+0.9*e(k);
+//					S2(k) = (1-0.9)*S2(k)+0.9*abs(e(k));
+//					alpha(k) = abs(S1(k))/S2(k);
+					
 					octave_int32 index = 0;
 					for (int m=0; m<numSfin; m++)
 					{
 						// Update slope
 						z = updateSlope(
 							v.column(k).linear_slice(index, index+numR(m)),
-							vhat(m), alpha(k), Rx(m, k), deltaStep(k)
+							vhat(m), alpha(k), Rx(m, k), deltaStep(m, k)
 						);
 						
 						// Project slope
@@ -191,13 +203,13 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 				} // endif
 			} // endfor k
 			
-			for (int k=0; k<numN; k++)
+			for (int m=0; m<numSfin; m++)
 			{
-				if (i != 0)
+				for (int k=0; k<numN; k++)
 				{
-					if (cost(k, i) > cost(k, i-1))
+					if (cost(k, i) >= cost(k, i-1)+10)
 					{
-						deltaStep(k) = fmax(1, 0.5*deltaStep(k));
+						deltaStep(m, k) = fmax(0, 0.5*deltaStep(m, k));
 					}
 				}
 			}
@@ -205,15 +217,11 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 		} // endfor iter
 		
 		// Rescale return value
-		uc = xc/rho;
-		ud = xd/rho;
-		q = (FloatNDArray)Rx/rho;
-		
-		retval(0) = octave_value(q);
-		retval(1) = octave_value(uc);
-		retval(2) = octave_value(ud);
-		retval(3) = octave_value(cost);
-		retval(4) = octave_value(v);
+		retval(0) = octave_value(T*(FloatNDArray)Rx/rho);
+		retval(1) = octave_value(xc/rho);
+		retval(2) = octave_value(xd/rho);
+		retval(3) = octave_value(cost.column(numI-1));
+		retval(4) = octave_value(cost);
 		
 		deleteLinProg();
 	}

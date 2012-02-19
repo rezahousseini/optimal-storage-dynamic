@@ -2,7 +2,7 @@ clear all;
 close all;
 
 numN=100;
-T=1;
+T=1/2;
 n=0:numN-1;
 t=n*T;
 
@@ -14,14 +14,14 @@ S.Qmin=[0,0];
 S.q0=[10,Inf];
 S.C=[5,30];
 S.D=[5,30];
-S.nul=[1,1];
-S.nuc=[1,1];
-S.nud=[1,1];
+S.etal=[1,1];
+S.etac=[1,1];
+S.etad=[1,1];
 S.DeltaCmax=[5,30];
 S.DeltaDmax=[5,30];
 
 numS=length(S.Qmax);
-numW=1;
+numW=3;
 
 u=zeros(1,numN);
 for k=2:numN

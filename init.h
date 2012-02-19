@@ -46,8 +46,8 @@ int32NDArray init(octave_scalar_map S)
 	{
 		if ((int)set_fin(k) == 1)
 		{
-			numR(count) = floor(rho*Qmax(k))+1; // Scale max capacity
-			R(count, 0) = floor(rho*q0(k)); // Storage level initialization; TODO checking for q0 <= Qmax
+			numR(count) = floor(rho*Qmax(k)/T)+1; // Scale max capacity
+			R(count, 0) = floor(rho*q0(k)/T); // Storage level initialization; TODO checking for q0 <= Qmax
 			count = count+1;
 		}
 	}
