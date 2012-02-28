@@ -69,7 +69,7 @@ void initLinProg(void)
 		{
 			sprintf(str, "y_%i_%i", m, k);
 			glp_set_col_name(lp, 3*numS+index+k, str);
-			glp_set_col_bnds(lp, 3*numS+index+k, GLP_DB, 0, 1); // 0 <= yt(r) <= 1
+			glp_set_col_bnds(lp, 3*numS+index+k, GLP_DB, 0, floor(1/T)); // 0 <= yt(r) <= 1
 		}
 		
 		index = index+(int)numR(m-1)-1;
@@ -235,7 +235,7 @@ opt_sol solveLinProg(float g, float r, FloatNDArray pc, FloatNDArray pd,
 			
 			// Node balance constraint
 			// -uc+ud+uh = R
-			glp_set_row_bnds(lp, count, GLP_FX, (float)R(count-1), (float)R(count-1));
+			glp_set_row_bnds(lp, count, GLP_FX, (float)R(count-1)/T, (float)R(count-1)/T);
 			
 			count = count+1;
 		}

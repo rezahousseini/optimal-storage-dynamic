@@ -33,14 +33,14 @@ FloatNDArray DeltaDmax;
 
 int32NDArray set_fin;
 
-const float gama = 0.5; // 0 <= gamma <= 1 0.5
-const float alpha0 = 0.8; // 0 <= alpha0 <= 1 0.8
-const float deltaStepMult = 0.8; // 0.8
-const float a = 4; // 4
-const float b = 100; // 40
-const float c = 0.5; // 0.4
+float gama = 0.5; // 0 <= gamma <= 1 0.5
+float alpha0 = 0.8; // 0 <= alpha0 <= 1 0.8
+float deltaStepMult = 0.8; // 0.8
+float a = 4; // 4
+float b = 100; // 40
+float c = 0.5; // 0.4
 //const float nu = 0.2;
-//const float c0 = 10;
+//const float c0 = 1;
 //const float sigma20 = 1;
 
 // Own source files.
@@ -51,9 +51,10 @@ const float c = 0.5; // 0.4
 #include "utils.h"
 
 /* ----------------------------------------------------------------------------*
- * DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")   *
+ * DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T,    *
+ *  parm")                                                                     *
  * ----------------------------------------------------------------------------*
- * Main function. Call "SPARoptimalNStorage(rho, g, r, P, S, numI, T)" in 
+ * Main function. Call "SPARoptimalNStorage(rho, g, r, P, S, numI, T, parm)" in 
  * Octave.
  *
  * @param rho Scaling factor for the quantisation.
@@ -68,11 +69,11 @@ const float c = 0.5; // 0.4
  *
  */ 
 
-DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
+DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T, parm")
 {
 	octave_value_list retval;
 	
-	if (args.length() != 7) print_usage();
+	if (args.length() < 7) print_usage();
 	else
 	{
 		rho = args(0).float_value();
@@ -82,6 +83,16 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 		octave_scalar_map S = args(4).scalar_map_value();
 		int numI = args(5).int_value();
 		T = args(6).float_value();
+		octave_scalar_map parm = args(7).scalar_map_value();
+		
+		// Parameters
+		gama = parm.contents("gamma").float_value();
+		alpha0 = parm.contents("alpha0").float_value();
+		deltaStepMult = parm.contents("deltaStepMult").float_value();
+		a = parm.contents("a").float_value();
+		b = parm.contents("b").float_value();
+		c = parm.contents("c").float_value();
+		float epsilon = parm.contents("epsilon").float_value();
 		
 		// Prices
 		FloatNDArray pg = P.contents("pg").array_value();
@@ -122,9 +133,9 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 			}
 		}
 		
-		FloatNDArray S1(dim_vector(numN, 1), 0);
-		FloatNDArray S2(dim_vector(numN, 1), 0);
-		FloatNDArray e(dim_vector(numN, 1), 0);
+//		FloatNDArray S1(dim_vector(numN, 1), 0);
+//		FloatNDArray S2(dim_vector(numN, 1), 0);
+//		FloatNDArray e(dim_vector(numN, 1), 0);
 		
 		// Return values
 		FloatNDArray cost(dim_vector(numN, numI), 0);
@@ -133,7 +144,7 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 		
 		for (int i=1; i<numI; i++)
 		{
-			smpl = randi(0,numW,numN); // Generate sample
+			smpl = randi(0, numW, numN); // Generate sample
 			
 			for (int k=0; k<numN; k++)
 			{
@@ -164,10 +175,8 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 				// Update step
 //				alpha(k) = ((1-gama)*lambda(k)*sigma2(k)+pow(1-(1-gama)*delta(k), 2)*pow(c(k), 2))/
 //					(pow(1-gama, 2)*lambda(k)*sigma2(k)+pow(1-(1-gama)*delta(k), 2)*pow(c(k), 2)+sigma2(k));
-//				
-////				printf("alpha=%f\n", alpha(k));
-//				c(k) = (1-nu)*c(k)+nu*ret.F;
-//				sigma2(k) = (1-nu)*sigma2(k)+nu*pow(c(k)-ret.F, 2);
+//				c(k) = (1-nu)*c(k)+nu*cost(k, i);
+//				sigma2(k) = (1-nu)*sigma2(k)+nu*pow(c(k)-cost(k, i), 2);
 //				lambda(k) = pow(alpha(k), 2)+pow(1-(1-gama)*alpha(k), 2)*lambda(k);
 //				delta(k) = alpha(k)+(1-(1-gama)*alpha(k))*delta(k);
 				
@@ -207,7 +216,7 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 			{
 				for (int k=0; k<numN; k++)
 				{
-					if (cost(k, i) >= cost(k, i-1)+10)
+					if (cost(k, i) >= cost(k, i-1)+epsilon)
 					{
 						deltaStep(m, k) = fmax(0, 0.5*deltaStep(m, k));
 					}
@@ -217,7 +226,7 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T")
 		} // endfor iter
 		
 		// Rescale return value
-		retval(0) = octave_value(T*(FloatNDArray)Rx/rho);
+		retval(0) = octave_value((FloatNDArray)Rx/rho);
 		retval(1) = octave_value(xc/rho);
 		retval(2) = octave_value(xd/rho);
 		retval(3) = octave_value(cost.column(numI-1));
