@@ -25,31 +25,3 @@ int32NDArray randi(int min, int max, int length)
 	
 	return sample;
 }
-
-/* ----------------------------------------------------------------------------*
- * int32NDArray scale(NDArray S, float s)                                      *
- * ----------------------------------------------------------------------------*
- * Scaling an array by a float number.
- *
- * @param S Array to scale.
- * @param s Scale factor.
- *
- * @return Array of integers scaled with factor s.
- *
- */
-
-int32NDArray scale(NDArray S, float s)
-{
-	dim_vector dv = S.dims();
-	int32NDArray S_int(dv);
-	
-	for (int k=0; k<dv(0); k++)
-	{
-		for (int m=0; m<dv(1); m++)
-		{
-			S_int(k,m) = floor(s*S(k,m));
-		}
-	}
-	
-	return S_int;
-}

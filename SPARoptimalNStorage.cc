@@ -5,7 +5,7 @@
 #include <octave/ov-struct.h>
 #include <octave/intNDArray.h>
 #include <iostream>
-#include <QuadProg++.hh>
+//#include <QuadProg++.hh>
 
 using namespace std;
 
@@ -77,8 +77,8 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T, parm")
 	else
 	{
 		rho = args(0).float_value();
-		FloatNDArray g = args(1).array_value();
-		FloatNDArray r = args(2).array_value();
+		FloatNDArray g = args(1).float_array_value();
+		FloatNDArray r = args(2).float_array_value();
 		octave_scalar_map P = args(3).scalar_map_value();
 		octave_scalar_map S = args(4).scalar_map_value();
 		int numI = args(5).int_value();
@@ -205,7 +205,7 @@ DEFUN_DLD(SPARoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T, parm")
 						);
 						
 						// Project slope
-						v.insert(projectSlope(z, Rx(m, k)), index, k);
+						v.insert(projectSlope(z, Rx(m, k), deltaStep(m, k)), index, k);
 						
 						index = index+numR(m);
 					} // endfor m
