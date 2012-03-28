@@ -1,5 +1,5 @@
 /* ----------------------------------------------------------------------------*
- * int32NDArray randi(int min, int max, int length)                            *
+ * vector<int> randi(int min, int max, int length)                             *
  * ----------------------------------------------------------------------------*
  * Generating random integer vector.
  *
@@ -11,15 +11,10 @@
  *
  */
 
-int32NDArray randi(int min, int max, int length)
-{
-	dim_vector dv;
-	dv(0) = length;
-	dv(1) = 1;
-	int32NDArray sample(dv);
+vector<int> randi(int min, int max, int length) {
+	vector<int> sample(length);
 	
-	for (int k=0; k<length; k++)
-	{
+	for (int k=0; k<length; k++) {
 		sample(k) = floor((min+(max+1-min)*rand()/RAND_MAX));
 	}
 	

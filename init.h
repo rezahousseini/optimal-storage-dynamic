@@ -1,5 +1,5 @@
 /* ----------------------------------------------------------------------------*
- * int32NDArray init(octave_scalar_map S)                                              *
+ * matrix<int> init(storages S)                                                *
  * ----------------------------------------------------------------------------*
  * Initiation of the algorithm.
  *
@@ -9,23 +9,22 @@
  *
  */ 
 
-int32NDArray init(octave_scalar_map S)
-{
+matrix<int> init(storages S) {
 	// Storage parameters
-	Qmax = S.contents("Qmax").array_value();
-	Qmin = S.contents("Qmin").array_value();
-	q0 = S.contents("q0").array_value();
-	C = S.contents("C").array_value();
-	D = S.contents("D").array_value();
-	etal = S.contents("etal").array_value();
-	etac = S.contents("etac").array_value();
-	etad = S.contents("etad").array_value();
-	DeltaCmax = S.contents("DeltaCmax").array_value();
-	DeltaDmax = S.contents("DeltaDmax").array_value();
+	Qmax = S.Qmax;
+	Qmin = S.Qmin;
+	q0 = S.q0;
+	C = S.C;
+	D = S.D;
+	etal = S.etal;
+	etac = S.etac;
+	etad = S.etad;
+	DeltaCmax = S.DeltaCmax;
+	DeltaDmax = S.DeltaDmax;
 	
 	// Number of ressources
-	numS = Qmax.nelem();
-	set_fin = int32NDArray(dim_vector(numS, 1), 0);
+	numS = Qmax.size();
+	set_fin = zero_vector<int> (numS);
 	
 	int count = 0;
 	for (int k=0; k<numS; k++)
@@ -36,10 +35,12 @@ int32NDArray init(octave_scalar_map S)
 		}
 	}
 	
-	numSfin = set_fin.sum(0).elem(0);
-	numR = int32NDArray(dim_vector(numSfin, 1));
+	numSfin = accumulate(set_fin, 0);
+	numR = zero_vector<int> (numSfin);
 	
-	int32NDArray R(dim_vector(numSfin, numN), 0);
+	matrix<int> R(numSfin, numN);
+//	R = zero_matrix<int> (numSfin, numN);
+	
 	
 	count = 0;
 	for (int k=0; k<numS; k++)

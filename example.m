@@ -44,37 +44,32 @@ P.pd=zeros(numS,numN,numW);
 P.pd(1,:,:)=0.2*ones(numN,numW);
 P.pd(2,:,:)=p;
 
-%plot(t,mean(r,2),t,mean(g,2))
+Parm.gamma=0.5;
+Parm.alpha0=1;
+Parm.deltaStepMult=0.8;
+Parm.a=1;
+Parm.b=1000;
+Parm.c=1;
+Parm.epsilon=1;
+
+ADPoptimalNStorage(rho,g,r,P,S,numI,T,Parm)
 
 %mkoctfile SPARoptimalNStorage.cc -lglpk
-tic;
-[q,uc,ud,cost,v]=SPARoptimalNStorage(rho,g,r,P,S,numI,T);
-toc;
+%tic;
+%[q,uc,ud,cost,v]=SPARoptimalNStorage(rho,g,r,P,S,numI,T);
+%toc;
 
-figure(1)
-%plot(t,r,t,g,t,g-uc(1,:)'-uc(2,:)'-uc(3,:)'+ud(1,:)'+ud(2,:)'+ud(3,:)',t,ud(4,:)'-uc(4,:)')
-plot(t,mean(r,2),t,mean(g,2),t,mean(g,2)-uc(1,:)'+ud(1,:)',t,ud(2,:)'-uc(2,:)')
-legend("Nachfrage","Produktion ohne Speicher","Produktion mit Speicher","Netz")
-grid on
-
-%figure(2)
-%surf(v)
+%figure(1)
+%%plot(t,r,t,g,t,g-uc(1,:)'-uc(2,:)'-uc(3,:)'+ud(1,:)'+ud(2,:)'+ud(3,:)',t,ud(4,:)'-uc(4,:)')
+%plot(t,mean(r,2),t,mean(g,2),t,mean(g,2)-uc(1,:)'+ud(1,:)',t,ud(2,:)'-uc(2,:)')
+%legend("Nachfrage","Produktion ohne Speicher","Produktion mit Speicher","Netz")
 %grid on
 
-figure(3)
-%plot(t,q(1,:),t,q(2,:),t,q(3,:))
-plot(t,q(1,:),t,mean(g,2),t,mean(r,2),t,p)
-grid on
+%figure(3)
+%%plot(t,q(1,:),t,q(2,:),t,q(3,:))
+%plot(t,q(1,:),t,mean(g,2),t,mean(r,2),t,p)
+%grid on
 
-figure(4)
-plot(sum(cost))
-grid on
-
-%vstep=zeros(floor(rho*S.Qmax(1))+1,numI+1);
-%for k=1:numI+1
-%	vstep(:,k)=v(:,3,k);
-%endfor
-%figure(5)
-%surf(vstep)
-%xlabel("iteration")
-%ylabel("level")
+%figure(4)
+%plot(sum(cost))
+%grid on

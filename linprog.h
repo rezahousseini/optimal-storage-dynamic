@@ -1,11 +1,10 @@
-struct opt_sol
-{
+struct opt_sol {
 	float F;
-	FloatNDArray xc;
-	FloatNDArray xd;
-	FloatNDArray xh;
-	FloatNDArray vhat;
-	FloatNDArray phi;
+	vector<float> xc;
+	vector<float> xd;
+	vector<float> xh;
+	vector<float> vhat;
+	vector<float> phi;
 };
 
 /* ----------------------------------------------------------------------------*
@@ -22,7 +21,7 @@ struct opt_sol
 void initLinProg(void)
 {
 	lp = glp_create_prob();
-	int numV = (int)numR.sum(0).elem(0)-numSfin;
+	int numV = accumulate(numR, 0)-numSfin;
 	glp_add_rows(lp, 2*numSfin+2);
 	glp_add_cols(lp, 3*numS+numV);
 	glp_set_obj_name(lp, "cost");
@@ -51,7 +50,7 @@ void initLinProg(void)
 		sprintf(str, "uh_%i", m);
 		glp_set_col_name(lp, 2*numS+m, str); // u hold
 		
-		if ((int)set_fin(m-1) == 1)
+		if (set_fin(m-1) == 1)
 		{
 			glp_set_col_bnds(lp, 2*numS+m, GLP_DB, 
 				floor(rho*Qmin(m-1)/T),
@@ -65,14 +64,14 @@ void initLinProg(void)
 	index = 0;
 	for (int m=1; m<=numSfin; m++)
 	{
-		for (int k=1; k<=(int)numR(m-1)-1; k++)
+		for (int k=1; k<=numR(m-1)-1; k++)
 		{
 			sprintf(str, "y_%i_%i", m, k);
 			glp_set_col_name(lp, 3*numS+index+k, str);
 			glp_set_col_bnds(lp, 3*numS+index+k, GLP_DB, 0, floor(1/T)); // 0 <= yt(r) <= 1
 		}
 		
-		index = index+(int)numR(m-1)-1;
+		index = index+numR(m-1)-1;
 	}
 	
 	// Node balance constraint
@@ -80,7 +79,7 @@ void initLinProg(void)
 	count = 1;
 	for (int m=1; m<=numS; m++)
 	{
-		if ((int)set_fin(m-1) == 1)
+		if (set_fin(m-1) == 1)
 		{
 			// Reset the val vector to 0
 			for (int n=1; n<=3*numS+numV; n++)
@@ -117,11 +116,11 @@ void initLinProg(void)
 			val[numS+m] = 0;// 0*ud
 			val[2*numS+m] = -1;// -uh
 			
-			for (int k=1; k<=(int)numR(count-1)-1; k++)
+			for (int k=1; k<=numR(count-1)-1; k++)
 			{
 				val[3*numS+index+k] = 1;
 			}
-			index = index+(int)numR(count-1)-1;
+			index = index+numR(count-1)-1;
 			
 			sprintf(str, "value_function_%i", count);
 			glp_set_row_name(lp, numSfin+count, str);
@@ -168,8 +167,8 @@ void initLinProg(void)
 }
 
 /* --------------------------------------------------------------------------- *
- * opt_sol solveLinProg(float g, float r, FloatNDArray pc, FloatNDArray pd,    *
- *  int32NDArray R, FloatNDArray v, FloatNDArray xc, FloatNDArray xd)          *
+ * opt_sol solveLinProg(float g, float r, vector<float> pc, vector<float> pd,  *
+ *  vector<int> R, vector<float> v, vector<float> xc, vector<float> xd)        *
  * --------------------------------------------------------------------------- *
  * Solving the linear programming problem.
  *
@@ -186,16 +185,15 @@ void initLinProg(void)
  *
  */
 
-opt_sol solveLinProg(float g, float r, FloatNDArray pc, FloatNDArray pd,
-	int32NDArray R, FloatNDArray v, FloatNDArray xc, FloatNDArray xd)
-{
+opt_sol solveLinProg(float g, float r, vector<float> pc, vector<float> pd,
+	vector<int> R, vector<float> v, vector<float> xc, vector<float> xd) {
 	opt_sol retval;
-	int numV = (int)numR.sum(0).elem(0)-numSfin;
-	retval.xc = FloatNDArray(dim_vector(numS, 1));
-	retval.xd = FloatNDArray(dim_vector(numS, 1));
-	retval.xh = FloatNDArray(dim_vector(numS, 1));
-	retval.vhat = FloatNDArray(dim_vector(numSfin, 1));
-	retval.phi = FloatNDArray(dim_vector(numV, 1));
+	int numV = accumulate(numR, 0)-numSfin;
+	retval.xc = vector<float>(numS);
+	retval.xd = vector<float>(numS);
+	retval.xh = vector<float>(numS);
+	retval.vhat = vector<float>(numSfin);
+	retval.phi = vector<float>(numV);
 	int index = 0;
 	int index_v = 0;
 	int count = 1;
@@ -224,9 +222,9 @@ opt_sol solveLinProg(float g, float r, FloatNDArray pc, FloatNDArray pd,
 		glp_set_obj_coef(lp, numS+m, floor(rho*pd(m-1))); // pd*ud
 		glp_set_obj_coef(lp, 2*numS+m, 0); // 0*uh
 		
-		if ((int)set_fin(m-1) == 1)
+		if (set_fin(m-1) == 1)
 		{
-			for (int k=1; k<=(int)numR(m-1)-1; k++)
+			for (int k=1; k<=numR(m-1)-1; k++)
 			{
 				glp_set_obj_coef(lp, 3*numS+index+k, gama*v(index_v+k)); // gama*y*v
 			}
