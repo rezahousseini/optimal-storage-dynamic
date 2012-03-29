@@ -1,12 +1,13 @@
 To compile the files on an Ubuntu system with Octave and GLPK installed use on the terminal:
 mkoctfile <filename> -lglpk -lQuadProgpp
 
-- I added a file test.m, it explains the usage of the functions in a small example.
-- The file SPARoptimalNStorage.cc unifies the framework
-- Inclusions in file SPARoptimalNStorage.cc are:
+- I added a file example.m, it explains the usage of the functions in a small example.
+- The file solver.cc unifies the framework
+- Inclusions in file solver.cc are:
 	- init.h
 	- linprog.h
 	- slopeupdate.h
 	- transition.h
-	- utils.h (former support.h)
-- Library QuadProgPP will not be used in futur versions.
+	- utils.h
+- Libraries used are GLPK and BOOST
+- ADPoptimalNStorage.cc is the Octave interface
