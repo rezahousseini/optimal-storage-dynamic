@@ -1,6 +1,6 @@
 /* ----------------------------------------------------------------------------*
- * int32NDArray transitionResource(int32NDArray R, FloatNDArray xc,            *
- *  FloatNDArray xd)                                                           *
+ * vector<int> transitionResource(vector<int> R, vector<float> xc,             *
+ *  vector<float> xd)                                                          *
  * ----------------------------------------------------------------------------*
  * Resource transition function.
  *
@@ -12,16 +12,15 @@
  *
  */
 
-int32NDArray transitionResource(int32NDArray R, FloatNDArray xc,
-	FloatNDArray xd)
-{
-	int32NDArray Rx(dim_vector(numSfin, 1));
+vector<int> transitionResource(vector<int> R, vector<float> xc,
+	vector<float> xd) {
+	vector<int> Rx(numSfin);
 	float Rxerr;
 	int count = 0;
 	
 	for (int m=0; m<numS; m++)
 	{
-		if ((int)set_fin(m) == 1)
+		if (set_fin(m) == 1)
 		{
 			// Resource transition function
 			Rxerr = etal(m)*(float)R(count)+T*(etac(m)*xc(m)-xd(m)/etad(m));

@@ -5,8 +5,11 @@
 #include <boost/numeric/ublas/matrix.hpp>
 #include <boost/numeric/ublas/vector.hpp>
 #include <boost/numeric/ublas/matrix_proxy.hpp>
+#include <boost/numeric/ublas/vector_proxy.hpp>
 #include <boost/numeric/ublas/io.hpp>
 #include <boost/range/numeric.hpp>
+#include <boost/random.hpp>
+#include <boost/generator_iterator.hpp>
 
 using namespace boost;
 using namespace boost::numeric::ublas;
@@ -85,11 +88,13 @@ float c = 0.5; // 0.4
 // Own source files.
 #include "init.h"
 #include "linprog.h"
-//#include "transition.h"
-//#include "slopeupdate.h"
+#include "transition.h"
+#include "slopeupdate.h"
 #include "utils.h"
 
-solution solve(float rho, matrix<float> g, matrix<float> r, prices P, storages S, int numI, float T, parameters parm) {
+solution solve(float scale, matrix<float> g, matrix<float> r, prices P, storages S, int numI, float T, parameters parm) {
+	rho = scale;
+	
 	// Parameters
 	gama = parm.gama;
 	alpha0 = parm.alpha0;
@@ -115,16 +120,12 @@ solution solve(float rho, matrix<float> g, matrix<float> r, prices P, storages S
 	matrix<int> Rx(numSfin, numN);
 	
 	// Value function for the different levels
-	int sumNumR = accumulate(numR, 0);
-	matrix<float> v(sumNumR, numN);
-	v = zero_matrix<float>(sumNumR, numN);
+	matrix<float> v = zero_matrix<float> (accumulate(numR, 0), numN);
 	
 	opt_sol ret;
 	vector<int> smpl;
-	matrix<float> xc(numS, numN);
-	xc = zero_matrix<float>(numS, numN);
-	matrix<float> xd(numS, numN);
-	xd = zero_matrix<float>(numS, numN);
+	matrix<float> xc = zero_matrix<float>(numS, numN);
+	matrix<float> xd = zero_matrix<float>(numS, numN);
 	
 	vector<float> alpha(numN);
 	matrix<float> deltaStep(numSfin, numN);
@@ -136,8 +137,7 @@ solution solve(float rho, matrix<float> g, matrix<float> r, prices P, storages S
 	
 	// Return values
 	solution sol;
-	matrix<float> cost(numN, numI);
-	cost = zero_matrix<float>(numN, numI);
+	matrix<float> cost = zero_matrix<float>(numN, numI);
 	
 	initLinProg();
 	
@@ -145,76 +145,70 @@ solution solve(float rho, matrix<float> g, matrix<float> r, prices P, storages S
 		smpl = randi(0, numW, numN); // Generate sample
 		
 		for (int k=0; k<numN; k++) {
-		matrix_column<matrix<float> > mc(P.pc(smpl(k)), k);
-		std::cout << mc << std::endl;
 			// Find optimal value function
-//			ret = solveLinProg(
-//				g(k, smpl(k)), r(k, smpl(k)),
-//				P.pc.page(smpl(k)).column(k),
-//				P.pd.page(smpl(k)).column(k),
-//				matrix_column<matrix<float> > (R, k),
-//				matrix_column<matrix<float> > (v, k),
-//				matrix_column<matrix<float> > (xc, k),
-//				matrix_column<matrix<float> > (xd, k)
-//			);
-//			
-//			xc.insert(ret.xc, 0, k);
-//			xd.insert(ret.xd, 0, k);
-//			
-//			// Resource transition function
-//			Rx.insert(transitionResource(R.column(k), xc.column(k), xd.column(k)), 0, k);
-//			
-//			cost(k, i) = g(k, smpl(k))*pg(k, smpl(k))+r(k, smpl(k))*pr(k, smpl(k));
-//			for (int m=0; m<numS; m++) {
-//				cost(k, i) = cost(k, i)+xc(m, k)/rho*pc(m, k, smpl(k))+xd(m, k)/rho*pd(m, k, smpl(k));
-//			}
-//			
-//			alpha(k) = alpha0*(b/i+a)/(b/i+a+pow(i, c));
-//			
-//			if (k < numN-1) {
-//				// Compute post-decision asset level
-//				matrix_column<matrix<float> > (R, k+1) = matrix_column<matrix<float> > (Rx, k);
-//				
-//				// Observe slope
-//				vhat = observeSlope(g(k+1, smpl(k+1)), r(k+1, smpl(k+1)),
-//					pc.page(smpl(k+1)).column(k+1), pd.page(smpl(k+1)).column(k+1),
-//					Rx.column(k), v.column(k+1), xc.column(k+1), xd.column(k+1)
-//				);
-//				
-//				
-//				int index = 0;
-//				for (int m=0; m<numSfin; m++) {
-//					// Update slope
-//					z = updateSlope(
-//						v.column(k).linear_slice(index, index+numR(m)),
-//						vhat(m), alpha(k), Rx(m, k), deltaStep(m, k)
-//					);
-//					
-//					// Project slope
-//					v.insert(projectSlope(z, Rx(m, k), deltaStep(m, k)), index, k);
-//					
-//					index = index+numR(m);
-//				} // endfor m
-//			} // endif
+			ret = solveLinProg(
+				g(k, smpl(k)), r(k, smpl(k)),
+				matrix_column<matrix<float> > (P.pc(smpl(k)), k),
+				matrix_column<matrix<float> > (P.pd(smpl(k)), k),
+				matrix_column<matrix<int> > (R, k),
+				matrix_column<matrix<float> > (v, k),
+				matrix_column<matrix<float> > (xc, k),
+				matrix_column<matrix<float> > (xd, k)
+			);
+			
+			matrix_column<matrix<float> > (xc, k) = ret.xc;
+			matrix_column<matrix<float> > (xd, k) = ret.xd;
+			
+			// Resource transition function
+			vector<int> rx = transitionResource(matrix_column<matrix<int> > (R, k),
+				matrix_column<matrix<float> > (xc, k),
+				matrix_column<matrix<float> > (xd, k)
+			);
+			matrix_column<matrix<int> > (Rx, k) = rx;
+			
+			cost(k, i) = g(k, smpl(k))*P.pg(k, smpl(k))+r(k, smpl(k))*P.pr(k, smpl(k));
+			for (int m=0; m<numS; m++) {
+				cost(k, i) = cost(k, i)+xc(m, k)/rho*P.pc(smpl(k))(m, k)+xd(m, k)/rho*P.pd(smpl(k))(m, k);
+			}
+			
+			alpha(k) = alpha0*(b/i+a)/(b/i+a+pow(i, c));
+			
+			if (k < numN-1) {
+				// Compute post-decision asset level
+				matrix_column<matrix<int> > (R, k+1) = matrix_column<matrix<int> > (Rx, k);
+				
+				matrix_column<matrix<float> > (v, k) = update(
+					g(k+1, smpl(k+1)), r(k+1, smpl(k+1)),
+					matrix_column<matrix<float> > (P.pc(smpl(k+1)), k+1),
+					matrix_column<matrix<float> > (P.pd(smpl(k+1)), k+1),
+					matrix_column<matrix<int> > (R, k+1),
+					matrix_column<matrix<float> > (v, k),
+					matrix_column<matrix<float> > (v, k+1),
+					matrix_column<matrix<float> > (xc, k+1),
+					matrix_column<matrix<float> > (xd, k+1),
+					matrix_column<matrix<float> > (deltaStep, k),
+					alpha(k)
+				);
+			} // endif
 		} // endfor k
-//		
-//		for (int m=0; m<numSfin; m++) {
-//			for (int k=0; k<numN; k++) {
-//				if (cost(k, i) >= cost(k, i-1)+epsilon) {
-//					deltaStep(m, k) = fmax(0, 0.5*deltaStep(m, k));
-//				}
-//			}
-//		}
+		
+		for (int m=0; m<numSfin; m++) {
+			for (int k=0; k<numN; k++) {
+				if (cost(k, i) >= cost(k, i-1)+epsilon) {
+					deltaStep(m, k) = fmax(0, 0.5*deltaStep(m, k));
+				}
+			}
+		}
 	} // endfor iter
 	
 	deleteLinProg();
 	
-//	// Rescale return value
-//	sol.q = Rx/rho;
-//	sol.uc = xc/rho;
-//	sol.ud = xd/rho;
-//	sol.cost = matrix_column<matrix<float> >(cost, numI-1);
-//	sol.costIter = cost;
+	// Rescale return value
+	sol.q = Rx/rho;
+	sol.uc = xc/rho;
+	sol.ud = xd/rho;
+	sol.cost = matrix_column<matrix<float> > (cost, numI-1);
+	sol.costIter = cost;
 	
 	return sol;
 }

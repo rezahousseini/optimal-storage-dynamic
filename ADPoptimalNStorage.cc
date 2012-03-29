@@ -13,6 +13,8 @@ using namespace boost::numeric::ublas;
 vector<float> oct2ublas1d(FloatNDArray a_oct);
 matrix<float> oct2ublas2d(FloatNDArray a_oct);
 vector<matrix<float> > oct2ublas3d(FloatNDArray a_oct);
+FloatNDArray ublas2oct1d(vector<float> a);
+FloatNDArray ublas2oct2d(matrix<float> a);
 
 /* ----------------------------------------------------------------------------*
  * DEFUN_DLD(ADPoptimalNStorage, args, nargout, "rho, g, r, P, S, numI, T,    *
@@ -63,10 +65,10 @@ DEFUN_DLD(ADPoptimalNStorage, args, nargout, "rho, g, r, Prices, Storages, numI,
 		matrix<float> r = oct2ublas2d(cons);
 		
 		// Prices
-		matrix<float> pg = oct2ublas2d(Prices.contents("pg").array_value());
-		matrix<float> pr = oct2ublas2d(Prices.contents("pr").array_value());
-		vector<matrix<float> > pc = oct2ublas3d(Prices.contents("pc").array_value());
-		vector<matrix<float> > pd = oct2ublas3d(Prices.contents("pd").array_value());
+		P.pg = oct2ublas2d(Prices.contents("pg").array_value());
+		P.pr = oct2ublas2d(Prices.contents("pr").array_value());
+		P.pc = oct2ublas3d(Prices.contents("pc").array_value());
+		P.pd = oct2ublas3d(Prices.contents("pd").array_value());
 		
 		S.Qmax = oct2ublas1d(Storages.contents("Qmax").array_value());
 		S.Qmin = oct2ublas1d(Storages.contents("Qmin").array_value());
@@ -79,23 +81,14 @@ DEFUN_DLD(ADPoptimalNStorage, args, nargout, "rho, g, r, Prices, Storages, numI,
 		S.DeltaCmax = oct2ublas1d(Storages.contents("DeltaCmax").array_value());
 		S.DeltaDmax = oct2ublas1d(Storages.contents("DeltaDmax").array_value());
 		
-//		std::cout << S.Qmax << std::endl;
-		
-//		solution sol = solve(rho, g, r, P, S, numI, T, parm);
+		solution sol = solve(rho, g, r, P, S, numI, T, parm);
 		
 		// Return values
-//		int32NDArray q = FloatNDArray(dim_vector(numSfin, numN));
-//		FloatNDArray uc = FloatNDArray(dim_vector(numS, numN));
-//		FloatNDArray ud = FloatNDArray(dim_vector(numS, numN));
-//		FloatNDArray costIter(dim_vector(numN, 1));
-//		FloatNDArray cost(dim_vector(numN, numI));
-//		
-//		 Rescale return value
-//		retval(0) = octave_value(q);
-//		retval(1) = octave_value(uc);
-//		retval(2) = octave_value(ud);
-//		retval(3) = octave_value(cost);
-//		retval(4) = octave_value(costIter);
+		retval(0) = octave_value(ublas2oct2d(sol.q));
+		retval(1) = octave_value(ublas2oct2d(sol.uc));
+		retval(2) = octave_value(ublas2oct2d(sol.ud));
+		retval(3) = octave_value(ublas2oct1d(sol.cost));
+		retval(4) = octave_value(ublas2oct2d(sol.costIter));
 	}
 	
 	return retval;
@@ -112,7 +105,7 @@ vector<float> oct2ublas1d(FloatNDArray a_oct) {
 	vector<float> a(dim);
 	
 	for (int i=0; i<dim; i++) {
-			a(i) = a_oct(i);
+		a(i) = a_oct(i);
 	}
 	
 	return a;
@@ -136,17 +129,42 @@ vector<matrix<float> > oct2ublas3d(FloatNDArray a_oct) {
 	int dim1 = a_oct.dim1();
 	int dim2 = a_oct.dim2();
 	int dim3 = a_oct.dim3();
-	vector<matrix<float> > a(dim1);
-	matrix<float> aa(dim2, dim3);
+	vector<matrix<float> > a(dim3);
+	matrix<float> aa(dim1, dim2);
 	
-	for (int i1=0; i1<dim1; i1++) {
+	for (int i1=0; i1<dim3; i1++) {
 		for (int i2=0; i2<dim2; i2++) {
-			for (int i3=0; i3<dim3; i3++) {
-				aa(i2, i3) = a_oct(i1, i2, i3);
+			for (int i3=0; i3<dim1; i3++) {
+				aa(i3, i2) = a_oct(i3, i2, i1);
 			}
 		}
 		a(i1) = aa;
 	}
 	
 	return a;
+}
+
+FloatNDArray ublas2oct1d(vector<float> a) {
+	int dim = a.size();
+	FloatNDArray a_oct(dim_vector(dim, 1));
+	
+	for (int i=0; i<dim; i++) {
+		a_oct(i) = a(i);
+	}
+	
+	return a_oct;
+}
+
+FloatNDArray ublas2oct2d(matrix<float> a) {
+	int dim1 = a.size1();
+	int dim2 = a.size2();
+	FloatNDArray a_oct(dim_vector(dim1, dim2));
+	
+	for (int i1=0; i1<dim1; i1++) {
+		for (int i2=0; i2<dim2; i2++) {
+			a_oct(i1, i2) = a(i1, i2);
+		}
+	}
+	
+	return a_oct;
 }

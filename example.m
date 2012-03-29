@@ -1,13 +1,13 @@
 clear all;
 close all;
 
-numN=100;
+numN=10;
 T=1/2;
 n=0:numN-1;
 t=n*T;
 
-numI=100;
-rho=10;
+numI=2;
+rho=1;
 
 S.Qmax=[10,Inf];
 S.Qmin=[0,0];
@@ -52,24 +52,21 @@ Parm.b=1000;
 Parm.c=1;
 Parm.epsilon=1;
 
-ADPoptimalNStorage(rho,g,r,P,S,numI,T,Parm)
+%mkoctfile ADPoptimalNStorage.cc -lglpk
 
-%mkoctfile SPARoptimalNStorage.cc -lglpk
-%tic;
-%[q,uc,ud,cost,v]=SPARoptimalNStorage(rho,g,r,P,S,numI,T);
-%toc;
+tic;
+[q,uc,ud,cost,costIter]=ADPoptimalNStorage(rho,g,r,P,S,numI,T,Parm);
+toc;
 
-%figure(1)
-%%plot(t,r,t,g,t,g-uc(1,:)'-uc(2,:)'-uc(3,:)'+ud(1,:)'+ud(2,:)'+ud(3,:)',t,ud(4,:)'-uc(4,:)')
-%plot(t,mean(r,2),t,mean(g,2),t,mean(g,2)-uc(1,:)'+ud(1,:)',t,ud(2,:)'-uc(2,:)')
-%legend("Nachfrage","Produktion ohne Speicher","Produktion mit Speicher","Netz")
-%grid on
+figure(1)
+plot(t,mean(r,2),t,mean(g,2),t,mean(g,2)-uc(1,:)'+ud(1,:)',t,ud(2,:)'-uc(2,:)')
+legend("Nachfrage","Produktion ohne Speicher","Produktion mit Speicher","Netz")
+grid on
 
-%figure(3)
-%%plot(t,q(1,:),t,q(2,:),t,q(3,:))
-%plot(t,q(1,:),t,mean(g,2),t,mean(r,2),t,p)
-%grid on
+figure(3)
+plot(t,q(1,:),t,mean(g,2),t,mean(r,2),t,p)
+grid on
 
-%figure(4)
-%plot(sum(cost))
-%grid on
+figure(4)
+plot(cumsum(cost))
+grid on

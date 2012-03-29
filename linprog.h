@@ -189,19 +189,18 @@ opt_sol solveLinProg(float g, float r, vector<float> pc, vector<float> pd,
 	vector<int> R, vector<float> v, vector<float> xc, vector<float> xd) {
 	opt_sol retval;
 	int numV = accumulate(numR, 0)-numSfin;
-	retval.xc = vector<float>(numS);
-	retval.xd = vector<float>(numS);
-	retval.xh = vector<float>(numS);
-	retval.vhat = vector<float>(numSfin);
-	retval.phi = vector<float>(numV);
+	retval.xc = vector<float> (numS);
+	retval.xd = vector<float> (numS);
+	retval.xh = vector<float> (numS);
+	retval.vhat = vector<float> (numSfin);
+	retval.phi = vector<float> (numV);
 	int index = 0;
 	int index_v = 0;
 	int count = 1;
 	int ret;
 	
 	// Structural variable bounds
-	for (int m=1; m<=numS; m++)
-	{
+	for (int m=1; m<=numS; m++) {
 		// uc_(k-1)-DeltaCmax <= uc_k <= uc_(k-1)+DeltaCmax
 		glp_set_col_bnds(lp, m, GLP_DB,
 			floor(fmax(0, xc(m-1)-rho*DeltaCmax(m-1))),
@@ -216,16 +215,13 @@ opt_sol solveLinProg(float g, float r, vector<float> pc, vector<float> pd,
 	}
 	
 	// Objectiv coefficient
-	for (int m=1; m<=numS; m++)
-	{
+	for (int m=1; m<=numS; m++) {
 		glp_set_obj_coef(lp, m, floor(rho*pc(m-1))); // pc*uc
 		glp_set_obj_coef(lp, numS+m, floor(rho*pd(m-1))); // pd*ud
 		glp_set_obj_coef(lp, 2*numS+m, 0); // 0*uh
 		
-		if (set_fin(m-1) == 1)
-		{
-			for (int k=1; k<=numR(m-1)-1; k++)
-			{
+		if (set_fin(m-1) == 1) {
+			for (int k=1; k<=numR(m-1)-1; k++) {
 				glp_set_obj_coef(lp, 3*numS+index+k, gama*v(index_v+k)); // gama*y*v
 			}
 			index_v = index_v+(int)numR(m-1);
@@ -253,27 +249,21 @@ opt_sol solveLinProg(float g, float r, vector<float> pc, vector<float> pd,
 	
 	// Solve
 	ret = glp_simplex(lp, &parm_lp);
-	if (ret != 0) printf("No simplex solution. Error %i\n", ret);
+//	if (ret != 0) printf("No simplex solution. Error %i\n", ret); XXX
 	
 	retval.F = glp_get_obj_val(lp);
 	
-	for (int m=1; m<=numS; m++)
-	{
+	for (int m=1; m<=numS; m++) {
 		retval.xc(m-1) = glp_get_col_prim(lp, m);
 		retval.xd(m-1) = glp_get_col_prim(lp, numS+m);
 		retval.xh(m-1) = glp_get_col_prim(lp, 2*numS+m);
-		
-//		printf("xc_%i=%f\n", m, glp_get_col_prim(lp, m));
-//		printf("xd_%i=%f\n", m, glp_get_col_prim(lp, numS+m));
 	}
 	
-	for (int m=1; m<=numSfin; m++)
-	{
+	for (int m=1; m<=numSfin; m++) {
 		retval.vhat(m-1) = glp_get_row_dual(lp, m);
 	}
 	
-	for (int m=1; m<=numV; m++)
-	{
+	for (int m=1; m<=numV; m++) {
 		retval.phi(m-1) = glp_get_col_prim(lp, 3*numS+m);
 	}
 	
@@ -281,7 +271,7 @@ opt_sol solveLinProg(float g, float r, vector<float> pc, vector<float> pd,
 }
 
 /* ----------------------------------------------------------------------------*
- * void deleteLinProg(void)                                                        *
+ * void deleteLinProg(void)                                                    *
  * ----------------------------------------------------------------------------*
  * Deleting the linear programming problem.
  *
@@ -291,7 +281,6 @@ opt_sol solveLinProg(float g, float r, vector<float> pc, vector<float> pd,
  *
  */
 
-void deleteLinProg(void)
-{
+void deleteLinProg(void) {
 	glp_delete_prob(lp);
 }
