@@ -116,9 +116,6 @@ solution solve(float scale, matrix<float> g, matrix<float> r, prices P, storages
 	// Pre-decision asset level
 	matrix<int> R = init(S);
 	
-	// Post-decision asset level
-	matrix<int> Rx(numSfin, numN);
-	
 	// Value function for the different levels
 	matrix<float> v = zero_matrix<float> (accumulate(numR, 0), numN);
 	
@@ -159,24 +156,23 @@ solution solve(float scale, matrix<float> g, matrix<float> r, prices P, storages
 			matrix_column<matrix<float> > (xc, k) = ret.xc;
 			matrix_column<matrix<float> > (xd, k) = ret.xd;
 			
-			// Resource transition function
-			vector<int> rx = transitionResource(matrix_column<matrix<int> > (R, k),
-				matrix_column<matrix<float> > (xc, k),
-				matrix_column<matrix<float> > (xd, k)
-			);
-			matrix_column<matrix<int> > (Rx, k) = rx;
-			
 			cost(k, i) = g(k, smpl(k))*P.pg(k, smpl(k))+r(k, smpl(k))*P.pr(k, smpl(k));
 			for (int m=0; m<numS; m++) {
 				cost(k, i) = cost(k, i)+xc(m, k)/rho*P.pc(smpl(k))(m, k)+xd(m, k)/rho*P.pd(smpl(k))(m, k);
 			}
 			
+			// Update stepsize
 			alpha(k) = alpha0*(b/i+a)/(b/i+a+pow(i, c));
 			
 			if (k < numN-1) {
-				// Compute post-decision asset level
-				matrix_column<matrix<int> > (R, k+1) = matrix_column<matrix<int> > (Rx, k);
+				// Resource transition function
+				matrix_column<matrix<int> > (R, k+1) = transitionResource(
+					matrix_column<matrix<int> > (R, k),
+					matrix_column<matrix<float> > (xc, k),
+					matrix_column<matrix<float> > (xd, k)
+				);
 				
+				// Update cost function
 				matrix_column<matrix<float> > (v, k) = update(
 					g(k+1, smpl(k+1)), r(k+1, smpl(k+1)),
 					matrix_column<matrix<float> > (P.pc(smpl(k+1)), k+1),
@@ -204,7 +200,7 @@ solution solve(float scale, matrix<float> g, matrix<float> r, prices P, storages
 	deleteLinProg();
 	
 	// Rescale return value
-	sol.q = Rx/rho;
+	sol.q = R/rho;
 	sol.uc = xc/rho;
 	sol.ud = xd/rho;
 	sol.cost = matrix_column<matrix<float> > (cost, numI-1);
