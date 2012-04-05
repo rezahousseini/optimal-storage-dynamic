@@ -1,0 +1,15 @@
+- I added a file *example.m*, it explains the usage of the functions in a small example.
+- The file *solver.cc* unifies the framework
+- Inclusions in file *solver.cc* are:
+	- *init.h*
+	- *linprog.h*
+	- *slopeupdate.h*
+	- *transition.h*
+	- *utils.h*
+- Libraries used are **GLPK** and **BOOST**
+- *ADPoptimalNStorage.cc* is the Octave interface
+	- Compile it with `mkoctfile ADPoptimalNStorage.cc -lglpk`
+	- **BOOST** library should be in the include path
+- *ADPoptimalNStorage.cpp* is the Matlab interface
+	- Compile it with `mex ADPoptimalNStorage.cpp -lglpk`
+	- **BOOST** library should be in the include path

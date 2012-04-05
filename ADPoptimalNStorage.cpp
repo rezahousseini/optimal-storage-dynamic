@@ -77,7 +77,6 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 		S.DeltaCmax = mex2ublas1d(mxGetField(Storages, 0, "DeltaCmax"));
 		S.DeltaDmax = mex2ublas1d(mxGetField(Storages, 0, "DeltaDmax"));
 		
-//      std::cout << S.Qmax << std::endl;
 		solution sol = solve(rho, g, r, P, S, numI, T, parm);
 		
 		// Return values
