@@ -10,6 +10,6 @@
 - [ADPoptimalNStorage.cc](https://github.com/rezahousseini/optimal-storage-dynamic/blob/multios/ADPoptimalNStorage.cc) is the Octave interface
 	- Compile it with `mkoctfile ADPoptimalNStorage.cc -lglpk`
 	- **BOOST** library should be in the include path
-- [ADPoptimalNStorage.cc](https://github.com/rezahousseini/optimal-storage-dynamic/blob/multios/ADPoptimalNStorage.cc) is the Matlab interface
+- [ADPoptimalNStorage.cpp](https://github.com/rezahousseini/optimal-storage-dynamic/blob/multios/ADPoptimalNStorage.cpp) is the Matlab interface
 	- Compile it with `mex ADPoptimalNStorage.cpp -lglpk`
 	- **BOOST** library should be in the include path
