@@ -1,15 +1,15 @@
-- I added a file *example.m*, it explains the usage of the functions in a small example.
-- The file *solver.cc* unifies the framework
-- Inclusions in file *solver.cc* are:
-	- *init.h*
-	- *linprog.h*
-	- *slopeupdate.h*
-	- *transition.h*
-	- *utils.h*
+- I added a file [example.m](https://github.com/rezahousseini/optimal-storage-dynamic/blob/multios/example.m), it explains the usage of the functions in a small example.
+- The file [solver.cc](https://github.com/rezahousseini/optimal-storage-dynamic/blob/multios/solver.cc) unifies the framework
+- Inclusions in file [solver.cc](https://github.com/rezahousseini/optimal-storage-dynamic/blob/multios/solver.cc) are:
+	- [init.h](https://github.com/rezahousseini/optimal-storage-dynamic/blob/multios/init.h)
+	- [linprog.h](https://github.com/rezahousseini/optimal-storage-dynamic/blob/multios/linprog.h)
+	- [slopeupdate.h](https://github.com/rezahousseini/optimal-storage-dynamic/blob/multios/slopeupdate.h)
+	- [transition.h](https://github.com/rezahousseini/optimal-storage-dynamic/blob/multios/transition.h)
+	- [utils.h](https://github.com/rezahousseini/optimal-storage-dynamic/blob/multios/utils.h)
 - Libraries used are **GLPK** and **BOOST**
-- *ADPoptimalNStorage.cc* is the Octave interface
+- [ADPoptimalNStorage.cc](https://github.com/rezahousseini/optimal-storage-dynamic/blob/multios/ADPoptimalNStorage.cc) is the Octave interface
 	- Compile it with `mkoctfile ADPoptimalNStorage.cc -lglpk`
 	- **BOOST** library should be in the include path
-- *ADPoptimalNStorage.cpp* is the Matlab interface
+- [ADPoptimalNStorage.cc](https://github.com/rezahousseini/optimal-storage-dynamic/blob/multios/ADPoptimalNStorage.cc) is the Matlab interface
 	- Compile it with `mex ADPoptimalNStorage.cpp -lglpk`
 	- **BOOST** library should be in the include path
