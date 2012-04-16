@@ -1,13 +1,13 @@
 clear all;
 close all;
 
-numN=10;
+numN=200;
 T=1/2;
 n=0:numN-1;
 t=n*T;
 
-numI=2;
-rho=1;
+numI=10;
+rho=100;
 
 S.Qmax=[10,Inf];
 S.Qmin=[0,0];
@@ -57,8 +57,8 @@ tic;
 toc;
 
 figure(1)
-plot(t,mean(r,2),t,mean(g,2),t,mean(g,2)-uc(1,:)'+ud(1,:)',t,ud(2,:)'-uc(2,:)')
-legend('Nachfrage','Produktion ohne Speicher','Produktion mit Speicher','Netz')
+plot(t,mean(r,2),t,mean(g,2),t,mean(g,2)-uc(1,:)'+ud(1,:)',t,ud(2,:)'-uc(2,:)',t,ud(1,:)'-uc(1,:)')
+legend('Nachfrage','Produktion ohne Speicher','Produktion mit Speicher','Netz','Speicher')
 grid on
 
 figure(3)

@@ -53,8 +53,8 @@ void initLinProg(void)
 		if (set_fin(m-1) == 1)
 		{
 			glp_set_col_bnds(lp, 2*numS+m, GLP_DB, 
-				floor(rho*Qmin(m-1)/T),
-				floor(rho*Qmax(m-1)/T)
+				floor(rho*S.Qmin(m-1)/T),
+				floor(rho*S.Qmax(m-1)/T)
 			);
 		}
 		else glp_set_col_bnds(lp, 2*numS+m, GLP_FX, 0, 0);
@@ -203,14 +203,14 @@ opt_sol solveLinProg(float g, float r, vector<float> pc, vector<float> pd,
 	for (int m=1; m<=numS; m++) {
 		// uc_(k-1)-DeltaCmax <= uc_k <= uc_(k-1)+DeltaCmax
 		glp_set_col_bnds(lp, m, GLP_DB,
-			floor(fmax(0, xc(m-1)-rho*DeltaCmax(m-1))),
-			floor(fmin(rho*C(m-1), xc(m-1)+rho*DeltaCmax(m-1)))
+			floor(fmax(0, xc(m-1)-rho*S.DeltaCmax(m-1))),
+			floor(fmin(rho*S.C(m-1), xc(m-1)+rho*S.DeltaCmax(m-1)))
 		);
 		
 		// ud_(k-1)-DeltaDmax <= ud_k <= ud_(k-1)+DeltaDmax
 		glp_set_col_bnds(lp, numS+m, GLP_DB,
-			floor(fmax(0, xd(m-1)-rho*DeltaDmax(m-1))),
-			floor(fmin(rho*D(m-1), xd(m-1)+rho*DeltaDmax(m-1)))
+			floor(fmax(0, xd(m-1)-rho*S.DeltaDmax(m-1))),
+			floor(fmin(rho*S.D(m-1), xd(m-1)+rho*S.DeltaDmax(m-1)))
 		);
 	}
 	
@@ -222,7 +222,7 @@ opt_sol solveLinProg(float g, float r, vector<float> pc, vector<float> pd,
 		
 		if (set_fin(m-1) == 1) {
 			for (int k=1; k<=numR(m-1)-1; k++) {
-				glp_set_obj_coef(lp, 3*numS+index+k, gama*v(index_v+k)); // gama*y*v
+				glp_set_obj_coef(lp, 3*numS+index+k, parm.gama*v(index_v+k)); // gama*y*v
 			}
 			index_v = index_v+(int)numR(m-1);
 			index = index+(int)numR(m-1)-1;

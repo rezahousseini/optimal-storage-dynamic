@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 #include <iostream>
 #include <glpk.h>
 #include <boost/numeric/ublas/matrix.hpp>
@@ -63,8 +64,10 @@ int numW;
 int numN;
 glp_prob *lp;
 glp_smcp parm_lp;
-float T;
 float rho;
+storages S;
+float T;
+parameters parm;
 vector<int> set_fin;
 
 vector<float> Qmax;
@@ -92,29 +95,12 @@ float c = 0.5; // 0.4
 #include "slopeupdate.h"
 #include "utils.h"
 
-solution solve(float scale, matrix<float> g, matrix<float> r, prices P, storages S, int numI, float T, parameters parm) {
-	rho = scale;
-	
-	// Parameters
-	gama = parm.gama;
-	alpha0 = parm.alpha0;
-	deltaStepMult = parm.deltaStepMult;
-	a = parm.a;
-	b = parm.b;
-	c = parm.c;
-	float epsilon = parm.epsilon;
-	
-	// Prices
-	matrix<float> pg = P.pg;
-	matrix<float> pr = P.pr;
-	vector<matrix<float> > pc = P.pc;
-	vector<matrix<float> > pd = P.pd;
-	
+solution solve(float rho, matrix<float> g, matrix<float> r, prices P, storages S, int numI, float T, parameters parm) {
 	numN = g.size1();
 	numW = g.size2();
 	
 	// Pre-decision asset level
-	matrix<int> R = init(S);
+	matrix<int> R = init();
 	
 	// Value function for the different levels
 	matrix<float> v = zero_matrix<float> (accumulate(numR, 0), numN);
@@ -123,18 +109,18 @@ solution solve(float scale, matrix<float> g, matrix<float> r, prices P, storages
 	vector<int> smpl;
 	matrix<float> xc = zero_matrix<float>(numS, numN);
 	matrix<float> xd = zero_matrix<float>(numS, numN);
+	matrix<float> cost = zero_matrix<float>(numN, numI);
 	
 	vector<float> alpha(numN);
 	matrix<float> deltaStep(numSfin, numN);
 	for (int m=0; m<numSfin; m++) {
 		for (int k=0; k<numN; k++) {
-			deltaStep(m, k) = deltaStepMult*(float)numR(m);
+			deltaStep(m, k) = parm.deltaStepMult*(float)numR(m);
 		}
 	}
 	
 	// Return values
 	solution sol;
-	matrix<float> cost = zero_matrix<float>(numN, numI);
 	
 	initLinProg();
 	
@@ -162,7 +148,7 @@ solution solve(float scale, matrix<float> g, matrix<float> r, prices P, storages
 			}
 			
 			// Update stepsize
-			alpha(k) = alpha0*(b/i+a)/(b/i+a+pow(i, c));
+			alpha(k) = parm.alpha0*(parm.b/i+parm.a)/(parm.b/i+parm.a+pow(i, parm.c));
 			
 			if (k < numN-1) {
 				// Resource transition function
@@ -190,7 +176,7 @@ solution solve(float scale, matrix<float> g, matrix<float> r, prices P, storages
 		
 		for (int m=0; m<numSfin; m++) {
 			for (int k=0; k<numN; k++) {
-				if (cost(k, i) >= cost(k, i-1)+epsilon) {
+				if (cost(k, i) >= cost(k, i-1)+parm.epsilon) {
 					deltaStep(m, k) = fmax(0, 0.5*deltaStep(m, k));
 				}
 			}
@@ -200,7 +186,7 @@ solution solve(float scale, matrix<float> g, matrix<float> r, prices P, storages
 	deleteLinProg();
 	
 	// Rescale return value
-	sol.q = R/rho;
+	sol.q = static_cast<matrix<float> >(R)/rho;
 	sol.uc = xc/rho;
 	sol.ud = xd/rho;
 	sol.cost = matrix_column<matrix<float> > (cost, numI-1);
