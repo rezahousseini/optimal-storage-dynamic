@@ -57,36 +57,19 @@ struct solution {
 	matrix<float> costIter;
 };
 
+float rho;
+storages S;
+float T;
+parameters parm;
+
+glp_prob *lp;
+glp_smcp parm_lp;
 vector<int> numR;
 int numS;
 int numSfin;
 int numW;
 int numN;
-glp_prob *lp;
-glp_smcp parm_lp;
-float rho;
-storages S;
-float T;
-parameters parm;
 vector<int> set_fin;
-
-vector<float> Qmax;
-vector<float> Qmin;
-vector<float> q0;
-vector<float> C;
-vector<float> D;
-vector<float> etal;
-vector<float> etac;
-vector<float> etad;
-vector<float> DeltaCmax;
-vector<float> DeltaDmax;
-
-float gama = 0.5; // 0 <= gamma <= 1 0.5
-float alpha0 = 0.8; // 0 <= alpha0 <= 1 0.8
-float deltaStepMult = 0.8; // 0.8
-float a = 4; // 4
-float b = 100; // 40
-float c = 0.5; // 0.4
 
 // Own source files.
 #include "init.h"
@@ -95,9 +78,13 @@ float c = 0.5; // 0.4
 #include "slopeupdate.h"
 #include "utils.h"
 
-solution solve(float rho, matrix<float> g, matrix<float> r, prices P, storages S, int numI, float T, parameters parm) {
-	numN = g.size1();
-	numW = g.size2();
+solution solve(float _rho, matrix<float> _g, matrix<float> _r, prices _P, storages _S, int _numI, float _T, parameters _parm) {
+	rho = _rho;
+	S = _S;
+	T = _T;
+	parm = _parm;
+	numN = _g.size1();
+	numW = _g.size2();
 	
 	// Pre-decision asset level
 	matrix<int> R = init();
@@ -109,14 +96,17 @@ solution solve(float rho, matrix<float> g, matrix<float> r, prices P, storages S
 	vector<int> smpl;
 	matrix<float> xc = zero_matrix<float>(numS, numN);
 	matrix<float> xd = zero_matrix<float>(numS, numN);
-	matrix<float> cost = zero_matrix<float>(numN, numI);
+	matrix<float> cost = zero_matrix<float>(numN, _numI);
 	
 	vector<float> alpha(numN);
 	matrix<float> deltaStep(numSfin, numN);
-	for (int m=0; m<numSfin; m++) {
-		for (int k=0; k<numN; k++) {
-			deltaStep(m, k) = parm.deltaStepMult*(float)numR(m);
-		}
+	//for (int m=0; m<numSfin; m++) {
+		//for (int k=0; k<numN; k++) {
+			//deltaStep(m, k) = parm.deltaStepMult*(float)numR(m);
+		//}
+	//}
+	for (int k=0; k<numN; k++) {
+		matrix_column<matrix<float> > (deltaStep, k) = parm.deltaStepMult*numR;
 	}
 	
 	// Return values
@@ -124,15 +114,15 @@ solution solve(float rho, matrix<float> g, matrix<float> r, prices P, storages S
 	
 	initLinProg();
 	
-	for (int i=1; i<numI; i++) {
+	for (int i=1; i<_numI; i++) {
 		smpl = randi(0, numW, numN); // Generate sample
 		
 		for (int k=0; k<numN; k++) {
 			// Find optimal value function
 			ret = solveLinProg(
-				g(k, smpl(k)), r(k, smpl(k)),
-				matrix_column<matrix<float> > (P.pc(smpl(k)), k),
-				matrix_column<matrix<float> > (P.pd(smpl(k)), k),
+				_g(k, smpl(k)), _r(k, smpl(k)),
+				matrix_column<matrix<float> > (_P.pc(smpl(k)), k),
+				matrix_column<matrix<float> > (_P.pd(smpl(k)), k),
 				matrix_column<matrix<int> > (R, k),
 				matrix_column<matrix<float> > (v, k),
 				matrix_column<matrix<float> > (xc, k),
@@ -142,9 +132,9 @@ solution solve(float rho, matrix<float> g, matrix<float> r, prices P, storages S
 			matrix_column<matrix<float> > (xc, k) = ret.xc;
 			matrix_column<matrix<float> > (xd, k) = ret.xd;
 			
-			cost(k, i) = g(k, smpl(k))*P.pg(k, smpl(k))+r(k, smpl(k))*P.pr(k, smpl(k));
+			cost(k, i) = _g(k, smpl(k))*_P.pg(k, smpl(k))+_r(k, smpl(k))*_P.pr(k, smpl(k));
 			for (int m=0; m<numS; m++) {
-				cost(k, i) = cost(k, i)+xc(m, k)/rho*P.pc(smpl(k))(m, k)+xd(m, k)/rho*P.pd(smpl(k))(m, k);
+				cost(k, i) = cost(k, i)+xc(m, k)/rho*_P.pc(smpl(k))(m, k)+xd(m, k)/rho*_P.pd(smpl(k))(m, k);
 			}
 			
 			// Update stepsize
@@ -160,9 +150,9 @@ solution solve(float rho, matrix<float> g, matrix<float> r, prices P, storages S
 				
 				// Update cost function
 				matrix_column<matrix<float> > (v, k) = update(
-					g(k+1, smpl(k+1)), r(k+1, smpl(k+1)),
-					matrix_column<matrix<float> > (P.pc(smpl(k+1)), k+1),
-					matrix_column<matrix<float> > (P.pd(smpl(k+1)), k+1),
+					_g(k+1, smpl(k+1)), _r(k+1, smpl(k+1)),
+					matrix_column<matrix<float> > (_P.pc(smpl(k+1)), k+1),
+					matrix_column<matrix<float> > (_P.pd(smpl(k+1)), k+1),
 					matrix_column<matrix<int> > (R, k+1),
 					matrix_column<matrix<float> > (v, k),
 					matrix_column<matrix<float> > (v, k+1),
@@ -189,7 +179,7 @@ solution solve(float rho, matrix<float> g, matrix<float> r, prices P, storages S
 	sol.q = static_cast<matrix<float> >(R)/rho;
 	sol.uc = xc/rho;
 	sol.ud = xd/rho;
-	sol.cost = matrix_column<matrix<float> > (cost, numI-1);
+	sol.cost = matrix_column<matrix<float> > (cost, _numI-1);
 	sol.costIter = cost;
 	
 	return sol;

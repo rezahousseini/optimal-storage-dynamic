@@ -49,40 +49,40 @@ DEFUN_DLD(ADPoptimalNStorage, args, nargout, "rho, g, r, Prices, Storages, numI,
 		float T = 						args(6).float_value();
 		octave_scalar_map Parameters = 	args(7).scalar_map_value();
 		
-		storages S;
-		prices P;
-		parameters parm;
+		storages Stora;
+		prices Price;
+		parameters Param;
 		
 		// Parameters
-		parm.gama = Parameters.contents("gamma").float_value();
-		parm.alpha0 = Parameters.contents("alpha0").float_value();
-		parm.deltaStepMult = Parameters.contents("deltaStepMult").float_value();
-		parm.a = Parameters.contents("a").float_value();
-		parm.b = Parameters.contents("b").float_value();
-		parm.c = Parameters.contents("c").float_value();
-		parm.epsilon = Parameters.contents("epsilon").float_value();
+		Param.gama = Parameters.contents("gamma").float_value();
+		Param.alpha0 = Parameters.contents("alpha0").float_value();
+		Param.deltaStepMult = Parameters.contents("deltaStepMult").float_value();
+		Param.a = Parameters.contents("a").float_value();
+		Param.b = Parameters.contents("b").float_value();
+		Param.c = Parameters.contents("c").float_value();
+		Param.epsilon = Parameters.contents("epsilon").float_value();
 		
 		matrix<float> g = oct2ublas2d(prod);
 		matrix<float> r = oct2ublas2d(cons);
 		
 		// Prices
-		P.pg = oct2ublas2d(Prices.contents("pg").array_value());
-		P.pr = oct2ublas2d(Prices.contents("pr").array_value());
-		P.pc = oct2ublas3d(Prices.contents("pc").array_value());
-		P.pd = oct2ublas3d(Prices.contents("pd").array_value());
+		Price.pg = oct2ublas2d(Prices.contents("pg").array_value());
+		Price.pr = oct2ublas2d(Prices.contents("pr").array_value());
+		Price.pc = oct2ublas3d(Prices.contents("pc").array_value());
+		Price.pd = oct2ublas3d(Prices.contents("pd").array_value());
 		
-		S.Qmax = oct2ublas1d(Storages.contents("Qmax").array_value());
-		S.Qmin = oct2ublas1d(Storages.contents("Qmin").array_value());
-		S.q0 = oct2ublas1d(Storages.contents("q0").array_value());
-		S.C = oct2ublas1d(Storages.contents("C").array_value());
-		S.D = oct2ublas1d(Storages.contents("D").array_value());
-		S.etal = oct2ublas1d(Storages.contents("etal").array_value());
-		S.etac = oct2ublas1d(Storages.contents("etac").array_value());
-		S.etad = oct2ublas1d(Storages.contents("etad").array_value());
-		S.DeltaCmax = oct2ublas1d(Storages.contents("DeltaCmax").array_value());
-		S.DeltaDmax = oct2ublas1d(Storages.contents("DeltaDmax").array_value());
+		Stora.Qmax = oct2ublas1d(Storages.contents("Qmax").array_value());
+		Stora.Qmin = oct2ublas1d(Storages.contents("Qmin").array_value());
+		Stora.q0 = oct2ublas1d(Storages.contents("q0").array_value());
+		Stora.C = oct2ublas1d(Storages.contents("C").array_value());
+		Stora.D = oct2ublas1d(Storages.contents("D").array_value());
+		Stora.etal = oct2ublas1d(Storages.contents("etal").array_value());
+		Stora.etac = oct2ublas1d(Storages.contents("etac").array_value());
+		Stora.etad = oct2ublas1d(Storages.contents("etad").array_value());
+		Stora.DeltaCmax = oct2ublas1d(Storages.contents("DeltaCmax").array_value());
+		Stora.DeltaDmax = oct2ublas1d(Storages.contents("DeltaDmax").array_value());
 		
-		solution sol = solve(rho, g, r, P, S, numI, T, parm);
+		solution sol = solve(rho, g, r, Price, Stora, numI, T, Param);
 		
 		// Return values
 		retval(0) = octave_value(ublas2oct2d(sol.q));

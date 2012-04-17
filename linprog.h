@@ -18,8 +18,7 @@ struct opt_sol {
  *
  */
 
-void initLinProg(void)
-{
+void initLinProg(void) {
 	lp = glp_create_prob();
 	int numV = accumulate(numR, 0)-numSfin;
 	glp_add_rows(lp, 2*numSfin+2);
@@ -32,15 +31,13 @@ void initLinProg(void)
 	char str[80];
 	int index;
 	
-	for (int k=0; k<=3*numS+numV; k++)
-	{
+	for (int k=0; k<=3*numS+numV; k++) {
 		ind[k] = k; // XXX ind and val start at 1 not at 0!!!!
 		val[k] = 0;
 	}
 	
 	// Structural variable bounds for u
-	for (int m=1; m<=numS; m++)
-	{
+	for (int m=1; m<=numS; m++) {
 		sprintf(str, "uc_%i", m);
 		glp_set_col_name(lp, m, str); // u charge
 		
@@ -50,8 +47,7 @@ void initLinProg(void)
 		sprintf(str, "uh_%i", m);
 		glp_set_col_name(lp, 2*numS+m, str); // u hold
 		
-		if (set_fin(m-1) == 1)
-		{
+		if (set_fin(m-1) == 1) {
 			glp_set_col_bnds(lp, 2*numS+m, GLP_DB, 
 				floor(rho*S.Qmin(m-1)/T),
 				floor(rho*S.Qmax(m-1)/T)
@@ -62,10 +58,8 @@ void initLinProg(void)
 	
 	// Structural variable bounds for y
 	index = 0;
-	for (int m=1; m<=numSfin; m++)
-	{
-		for (int k=1; k<=numR(m-1)-1; k++)
-		{
+	for (int m=1; m<=numSfin; m++) {
+		for (int k=1; k<=numR(m-1)-1; k++) {
 			sprintf(str, "y_%i_%i", m, k);
 			glp_set_col_name(lp, 3*numS+index+k, str);
 			glp_set_col_bnds(lp, 3*numS+index+k, GLP_DB, 0, floor(1/T)); // 0 <= yt(r) <= 1
@@ -77,13 +71,10 @@ void initLinProg(void)
 	// Node balance constraint
 	// -uc+ud+uh = R
 	count = 1;
-	for (int m=1; m<=numS; m++)
-	{
-		if (set_fin(m-1) == 1)
-		{
+	for (int m=1; m<=numS; m++) {
+		if (set_fin(m-1) == 1) {
 			// Reset the val vector to 0
-			for (int n=1; n<=3*numS+numV; n++)
-			{
+			for (int n=1; n<=3*numS+numV; n++) {
 				val[n] = 0;
 			}
 			
@@ -102,13 +93,10 @@ void initLinProg(void)
 	// -uh+sum{r=1...numR}yt(r) = 0
 	count = 1;
 	index = 0;
-	for (int m=1; m<=numS; m++)
-	{
-		if ((int)set_fin(m-1) == 1)
-		{
+	for (int m=1; m<=numS; m++) {
+		if ((int)set_fin(m-1) == 1) {
 			// Reset the val vector to 0
-			for (int n=1; n<=3*numS+numV; n++)
-			{
+			for (int n=1; n<=3*numS+numV; n++) {
 				val[n] = 0;
 			}
 			
@@ -116,8 +104,7 @@ void initLinProg(void)
 			val[numS+m] = 0;// 0*ud
 			val[2*numS+m] = -1;// -uh
 			
-			for (int k=1; k<=numR(count-1)-1; k++)
-			{
+			for (int k=1; k<=numR(count-1)-1; k++) {
 				val[3*numS+index+k] = 1;
 			}
 			index = index+numR(count-1)-1;
@@ -133,13 +120,11 @@ void initLinProg(void)
 	
 	// sum uc = ((g-r)+abs(g-r))/2
 	// Reset the val vector to 0
-	for (int n=1; n<=3*numS+numV; n++)
-	{
+	for (int n=1; n<=3*numS+numV; n++) {
 		val[n] = 0;
 	}
 	
-	for (int m=1; m<=numS; m++)
-	{
+	for (int m=1; m<=numS; m++) {
 		val[m] = 1;// uc
 	}
 	sprintf(str, "input_flow");
@@ -148,13 +133,11 @@ void initLinProg(void)
 	
 	// sum ud = ((r-g)+abs(r-g))/2
 	// Reset the val vector to 0
-	for (int n=1; n<=3*numS+numV; n++)
-	{
+	for (int n=1; n<=3*numS+numV; n++) {
 		val[n] = 0;
 	}
 	
-	for (int m=1; m<=numS; m++)
-	{
+	for (int m=1; m<=numS; m++) {
 		val[numS+m] = 1; // ud
 	}
 	sprintf(str, "output_flow");
@@ -201,17 +184,22 @@ opt_sol solveLinProg(float g, float r, vector<float> pc, vector<float> pd,
 	
 	// Structural variable bounds
 	for (int m=1; m<=numS; m++) {
+		//// uc_(k-1)-DeltaCmax <= uc_k <= uc_(k-1)+DeltaCmax
+		//glp_set_col_bnds(lp, m, GLP_DB,
+			//floor(fmax(0, xc(m-1)-rho*S.DeltaCmax(m-1))),
+			//floor(fmin(rho*S.C(m-1), xc(m-1)+rho*S.DeltaCmax(m-1)))
+		//);
+		
+		//// ud_(k-1)-DeltaDmax <= ud_k <= ud_(k-1)+DeltaDmax
+		//glp_set_col_bnds(lp, numS+m, GLP_DB,
+			//floor(fmax(0, xd(m-1)-rho*S.DeltaDmax(m-1))),
+			//floor(fmin(rho*S.D(m-1), xd(m-1)+rho*S.DeltaDmax(m-1)))
+		//);
 		// uc_(k-1)-DeltaCmax <= uc_k <= uc_(k-1)+DeltaCmax
-		glp_set_col_bnds(lp, m, GLP_DB,
-			floor(fmax(0, xc(m-1)-rho*S.DeltaCmax(m-1))),
-			floor(fmin(rho*S.C(m-1), xc(m-1)+rho*S.DeltaCmax(m-1)))
-		);
+		glp_set_col_bnds(lp, m, GLP_DB, 0, floor(rho*S.C(m-1)));
 		
 		// ud_(k-1)-DeltaDmax <= ud_k <= ud_(k-1)+DeltaDmax
-		glp_set_col_bnds(lp, numS+m, GLP_DB,
-			floor(fmax(0, xd(m-1)-rho*S.DeltaDmax(m-1))),
-			floor(fmin(rho*S.D(m-1), xd(m-1)+rho*S.DeltaDmax(m-1)))
-		);
+		glp_set_col_bnds(lp, numS+m, GLP_DB, 0, floor(rho*S.D(m-1)));
 	}
 	
 	// Objectiv coefficient
@@ -249,11 +237,13 @@ opt_sol solveLinProg(float g, float r, vector<float> pc, vector<float> pd,
 	
 	// Solve
 	ret = glp_simplex(lp, &parm_lp);
-//	if (ret != 0) printf("No simplex solution. Error %i\n", ret); XXX
+	if (ret != 0) printf("No simplex solution. Error %i\n", ret);
 	
 	retval.F = glp_get_obj_val(lp);
 	
 	for (int m=1; m<=numS; m++) {
+		std::cout << "xc " << glp_get_col_prim(lp, m) << std::endl;
+		std::cout << "xd " << glp_get_col_prim(lp, numS+m) << std::endl;
 		retval.xc(m-1) = glp_get_col_prim(lp, m);
 		retval.xd(m-1) = glp_get_col_prim(lp, numS+m);
 		retval.xh(m-1) = glp_get_col_prim(lp, 2*numS+m);

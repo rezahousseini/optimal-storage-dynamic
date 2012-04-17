@@ -1,7 +1,7 @@
 clear all;
 close all;
 
-numN=200;
+numN=10;
 T=1/2;
 n=0:numN-1;
 t=n*T;

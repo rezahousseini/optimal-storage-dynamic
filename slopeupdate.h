@@ -86,7 +86,7 @@ vector<float> updateSlope(vector<float> v, float vhat, float alpha, int Rx,
 	int upper = floor(fmin((float)Rx+delta, v.size()-1));
 	
 	for (int m=lower; m<=upper; m++) {
-		z(m) = (1-(1-gama)*alpha)*v(m)+alpha*vhat;
+		z(m) = (1-(1-parm.gama)*alpha)*v(m)+alpha*vhat;
 	}
 	
 	return z;

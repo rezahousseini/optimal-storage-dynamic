@@ -18,6 +18,7 @@ matrix<int> init() {
 	for (int k=0; k<numS; k++) {
 		// Qmax < inf
 		if (!isinf(S.Qmax(k))) set_fin(k) = 1;
+		else set_fin(k) = 0;
 	}
 	
 	numSfin = accumulate(set_fin, 0);
