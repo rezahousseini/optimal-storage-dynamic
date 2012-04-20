@@ -1,7 +1,5 @@
-vector<float> observeSlopeDual(float g, float r,
-	vector<float> pc, vector<float> pd, 
-	vector<int> Rx, vector<float> v,
-	vector<float> xc, vector<float> xd) {
+vector<float> observeSlopeDual(float g, float r, vector<float> pc, vector<float> pd, 
+ vector<int> Rx, vector<float> v, vector<float> xc, vector<float> xd) {
 	
 	opt_sol retce = solveLinProg(g, r, pc, pd, Rx, v, xc, xd);
 	
@@ -9,9 +7,9 @@ vector<float> observeSlopeDual(float g, float r,
 }
 
 vector<float> observeSlopeDerivative(float g, float r,
-	vector<float> pc, vector<float> pd, 
-	vector<int> Rx, vector<float> v,
-	vector<float> xc, vector<float> xd) {
+ vector<float> pc, vector<float> pd, 
+ vector<int> Rx, vector<float> v,
+ vector<float> xc, vector<float> xd) {
 	
 	vector<float> vhat(numSfin);
 	opt_sol retup, retlo, retce;
@@ -22,7 +20,7 @@ vector<float> observeSlopeDerivative(float g, float r,
 	
 	for (int m=0; m<numSfin; m++) {
 		if (Rx(m)+1 == v.size()) {
-			// There's no value in adding more than the maximum
+			// XXX There's no value in adding more than the maximum
 			vhat(m) = 0;
 		}
 		else {
@@ -58,9 +56,9 @@ vector<float> observeSlopeDerivative(float g, float r,
  */
 
 vector<float> observeSlope(float g, float r,
-	vector<float> pc, vector<float> pd, 
-	vector<int> Rx, vector<float> v,
-	vector<float> xc, vector<float> xd) {
+ vector<float> pc, vector<float> pd, 
+ vector<int> Rx, vector<float> v,
+ vector<float> xc, vector<float> xd) {
 	return observeSlopeDual(g, r, pc, pd, Rx, v, xc, xd);
 }
 
@@ -78,8 +76,7 @@ vector<float> observeSlope(float g, float r,
  *
  */
 
-vector<float> updateSlope(vector<float> v, float vhat, float alpha, int Rx,
-	float delta) {
+vector<float> updateSlope(vector<float> v, float vhat, float alpha, int Rx, float delta) {
 	vector<float> z(v);
 	
 	int lower = floor(fmax((float)Rx-delta, 0));
@@ -118,38 +115,55 @@ vector<float> projectSlopeLeveling(vector<float> z, int Rx, float delta) {
 
 vector<float> projectSlopeMeanLeveling(vector<float> z, int Rx, float delta) {
 	vector<float> v(z);
-	int numZ = z.size();
+	int numZ = z.size();	
+	
 	int left = 0;
 	int right = 0;
-	int lower = fmax(Rx-1-floor(delta), 0);
-	int upper = fmin(Rx+1+floor(delta), numZ-1);
-	float val_right = z(Rx)*2*(upper-Rx);
-	float val_left = z(Rx)*2*(Rx-lower);
 	
-	for (int r=upper; r<numZ; r++) {
-		if (v(r) < z(Rx)) {
-			right = right+1;
-			val_right = val_right+v(r);
-		}
-		else break;
-	}
+	int lower = Rx-floor(delta);
+	int upper = Rx+floor(delta);
 	
-	if (right > 0) {
-		vector<float> dum = scalar_vector<float> (upper-lower+right+1, val_right/(right+upper-lower));
-		vector_slice<vector<float> > (v, slice(lower, 1, upper-lower+right+1)) = dum;
-	}
-	else {
-		for (int r=lower; r>=0; r--) {
-			if (v(r) > z(Rx)) {
-				left = left+1;
-				val_left = val_left+v(r);
+	if (lower > 0 and upper < numZ-1) {
+		if (v(upper+1) < z(Rx)) {
+			left = lower;
+			right = upper;
+			for (int r=upper+1; r<numZ; r++) {
+				if (v(r) < z(Rx)) right = right+1;
+				else break;
 			}
-			else break;
 		}
-		
-		vector<float> dum = scalar_vector<float> (upper-lower+left+1, val_left/(left+upper-lower));
-		vector_slice<vector<float> > (v, slice(lower-left, 1, upper-lower+left+1)) = dum;
+		else if (v(lower-1) > z(Rx)) {
+			left = lower;
+			right = upper;
+			for (int r=lower-1; r>=0; r--) {
+				if (v(r) > z(Rx)) left = left-1;
+				else break;
+			}
+		} 
+	}	
+	else if (lower > 0 and upper >= numZ-1) {
+		if (v(lower-1) > z(Rx)) {
+			left = lower;
+			right = numZ-1;
+			for (int r=lower-1; r>=0; r--) {
+				if (v(r) > z(Rx)) left = left-1;
+				else break;
+			}
+		} 
 	}
+	else if (lower <= 0 and upper < numZ-1) {
+		if (v(upper+1) < z(Rx)) {
+			left = 0;
+			right = upper;
+			for (int r=upper+1; r<numZ; r++) {
+				if (v(r) < z(Rx)) right = right+1;
+				else break;
+			}
+		}
+	}
+	
+	float mean = std::accumulate(z.begin()+left, z.begin()+right+1, 0)/static_cast<float>(right+1-left);
+	fill(v.begin()+left, v.begin()+right+1, mean);
 	
 	return v;
 }
@@ -188,13 +202,13 @@ vector<float> projectSlope(vector<float> z, int Rx,  float delta) {
  */
  
 vector<float> update(float g, float r, vector<float> pc, vector<float> pd,
-	vector<int> Rx, vector<float> v_old, vector<float> v_new,
-	vector<float> xc, vector<float> xd, vector<float> deltaStep, float alpha) {
+ vector<int> Rx, vector<float> v_old, vector<float> v_new,
+ vector<float> xc, vector<float> xd, vector<float> deltaStep, float alpha) {
 	vector<float> z;
 	vector<float> v(accumulate(numR, 0));
 	
 	// Observe slope
-	vector<float> vhat = observeSlope(g, r, pc, pd,  Rx, v_new, xc, xd);
+	vector<float> vhat = observeSlope(g, r, pc, pd, Rx, v_new, xc, xd);
 	
 	int index = 0;
 	for (int m=0; m<numSfin; m++) {

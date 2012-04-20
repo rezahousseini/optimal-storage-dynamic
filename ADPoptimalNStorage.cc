@@ -40,13 +40,13 @@ DEFUN_DLD(ADPoptimalNStorage, args, nargout, "rho, g, r, Prices, Storages, numI,
 	
 	if (args.length() != 8) print_usage();
 	else {
-		float rho = 					args(0).float_value();
+		float scale = 					args(0).float_value();
 		FloatNDArray prod = 			args(1).float_array_value();
 		FloatNDArray cons = 			args(2).float_array_value();
 		octave_scalar_map Prices = 		args(3).scalar_map_value();
 		octave_scalar_map Storages = 	args(4).scalar_map_value();
-		int numI = 						args(5).int_value();
-		float T = 						args(6).float_value();
+		int iterations = 						args(5).int_value();
+		float step = 						args(6).float_value();
 		octave_scalar_map Parameters = 	args(7).scalar_map_value();
 		
 		storages Stora;
@@ -82,7 +82,7 @@ DEFUN_DLD(ADPoptimalNStorage, args, nargout, "rho, g, r, Prices, Storages, numI,
 		Stora.DeltaCmax = oct2ublas1d(Storages.contents("DeltaCmax").array_value());
 		Stora.DeltaDmax = oct2ublas1d(Storages.contents("DeltaDmax").array_value());
 		
-		solution sol = solve(rho, g, r, Price, Stora, numI, T, Param);
+		solution sol = solve(scale, g, r, Price, Stora, iterations, step, Param);
 		
 		// Return values
 		retval(0) = octave_value(ublas2oct2d(sol.q));

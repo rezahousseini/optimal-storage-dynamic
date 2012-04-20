@@ -3,6 +3,7 @@
 #include <math.h>
 #include <iostream>
 #include <glpk.h>
+#include <numeric>
 #include <boost/numeric/ublas/matrix.hpp>
 #include <boost/numeric/ublas/vector.hpp>
 #include <boost/numeric/ublas/matrix_proxy.hpp>
@@ -100,13 +101,8 @@ solution solve(float _rho, matrix<float> _g, matrix<float> _r, prices _P, storag
 	
 	vector<float> alpha(numN);
 	matrix<float> deltaStep(numSfin, numN);
-	//for (int m=0; m<numSfin; m++) {
-		//for (int k=0; k<numN; k++) {
-			//deltaStep(m, k) = parm.deltaStepMult*(float)numR(m);
-		//}
-	//}
-	for (int k=0; k<numN; k++) {
-		matrix_column<matrix<float> > (deltaStep, k) = parm.deltaStepMult*numR;
+	for (int t=0; t<numN; t++) {
+		matrix_column<matrix<float> > (deltaStep, t) = parm.deltaStepMult*numR;
 	}
 	
 	// Return values
@@ -114,65 +110,68 @@ solution solve(float _rho, matrix<float> _g, matrix<float> _r, prices _P, storag
 	
 	initLinProg();
 	
+	// Iteration loop
 	for (int i=1; i<_numI; i++) {
 		smpl = randi(0, numW, numN); // Generate sample
 		
-		for (int k=0; k<numN; k++) {
-			// Find optimal value function
+		// Time loop
+		for (int t=0; t<numN; t++) {
+			// Find optimal decisions
 			ret = solveLinProg(
-				_g(k, smpl(k)), _r(k, smpl(k)),
-				matrix_column<matrix<float> > (_P.pc(smpl(k)), k),
-				matrix_column<matrix<float> > (_P.pd(smpl(k)), k),
-				matrix_column<matrix<int> > (R, k),
-				matrix_column<matrix<float> > (v, k),
-				matrix_column<matrix<float> > (xc, k),
-				matrix_column<matrix<float> > (xd, k)
+				_g(t, smpl(t)), _r(t, smpl(t)),
+				matrix_column<matrix<float> > (_P.pc(smpl(t)), t),
+				matrix_column<matrix<float> > (_P.pd(smpl(t)), t),
+				matrix_column<matrix<int> > (R, t),
+				matrix_column<matrix<float> > (v, t),
+				matrix_column<matrix<float> > (xc, t),
+				matrix_column<matrix<float> > (xd, t)
 			);
 			
-			matrix_column<matrix<float> > (xc, k) = ret.xc;
-			matrix_column<matrix<float> > (xd, k) = ret.xd;
-			
-			cost(k, i) = _g(k, smpl(k))*_P.pg(k, smpl(k))+_r(k, smpl(k))*_P.pr(k, smpl(k));
-			for (int m=0; m<numS; m++) {
-				cost(k, i) = cost(k, i)+xc(m, k)/rho*_P.pc(smpl(k))(m, k)+xd(m, k)/rho*_P.pd(smpl(k))(m, k);
-			}
+			// Update decisions
+			matrix_column<matrix<float> > (xc, t) = ret.xc;
+			matrix_column<matrix<float> > (xd, t) = ret.xd;
 			
 			// Update stepsize
-			alpha(k) = parm.alpha0*(parm.b/i+parm.a)/(parm.b/i+parm.a+pow(i, parm.c));
+			alpha(t) = parm.alpha0*(parm.b/i+parm.a)/(parm.b/i+parm.a+pow(i, parm.c));
 			
-			if (k < numN-1) {
+			if (t < numN-1) {
 				// Resource transition function
-				matrix_column<matrix<int> > (R, k+1) = transitionResource(
-					matrix_column<matrix<int> > (R, k),
-					matrix_column<matrix<float> > (xc, k),
-					matrix_column<matrix<float> > (xd, k)
+				matrix_column<matrix<int> > (R, t+1) = transitionResource(
+					matrix_column<matrix<int> > (R, t),
+					matrix_column<matrix<float> > (xc, t),
+					matrix_column<matrix<float> > (xd, t)
 				);
 				
 				// Update cost function
-				matrix_column<matrix<float> > (v, k) = update(
-					_g(k+1, smpl(k+1)), _r(k+1, smpl(k+1)),
-					matrix_column<matrix<float> > (_P.pc(smpl(k+1)), k+1),
-					matrix_column<matrix<float> > (_P.pd(smpl(k+1)), k+1),
-					matrix_column<matrix<int> > (R, k+1),
-					matrix_column<matrix<float> > (v, k),
-					matrix_column<matrix<float> > (v, k+1),
-					matrix_column<matrix<float> > (xc, k+1),
-					matrix_column<matrix<float> > (xd, k+1),
-					matrix_column<matrix<float> > (deltaStep, k),
-					alpha(k)
+				matrix_column<matrix<float> > (v, t) = update(
+					_g(t+1, smpl(t+1)), _r(t+1, smpl(t+1)),
+					matrix_column<matrix<float> > (_P.pc(smpl(t+1)), t+1),
+					matrix_column<matrix<float> > (_P.pd(smpl(t+1)), t+1),
+					matrix_column<matrix<int> > (R, t+1),
+					matrix_column<matrix<float> > (v, t),
+					matrix_column<matrix<float> > (v, t+1),
+					matrix_column<matrix<float> > (xc, t+1),
+					matrix_column<matrix<float> > (xd, t+1),
+					matrix_column<matrix<float> > (deltaStep, t),
+					alpha(t)
 				);
 			} // endif
-		} // endfor k
-		
-		for (int m=0; m<numSfin; m++) {
-			for (int k=0; k<numN; k++) {
-				if (cost(k, i) >= cost(k, i-1)+parm.epsilon) {
-					deltaStep(m, k) = fmax(0, 0.5*deltaStep(m, k));
+			
+			// Update cost and deltaStep
+			cost(t, i) = _g(t, smpl(t))*_P.pg(t, smpl(t))+_r(t, smpl(t))*_P.pr(t, smpl(t));
+			for (int m=0; m<numS; m++) {
+				cost(t, i) = cost(t, i)+xc(m, t)/rho*_P.pc(smpl(t))(m, t)+xd(m, t)/rho*_P.pd(smpl(t))(m, t);
+			}
+			
+			for (int m=0; m<numSfin; m++) {
+				if (cost(t, i) >= cost(t, i-1)+parm.epsilon) {
+					deltaStep(m, t) = fmax(0, 0.5*deltaStep(m, t));
 				}
 			}
-		}
-	} // endfor iter
+		} // endfor t
+	} // endfor i
 	
+	// Free memory
 	deleteLinProg();
 	
 	// Rescale return value

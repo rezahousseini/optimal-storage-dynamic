@@ -169,7 +169,7 @@ void initLinProg(void) {
  */
 
 opt_sol solveLinProg(float g, float r, vector<float> pc, vector<float> pd,
-	vector<int> R, vector<float> v, vector<float> xc, vector<float> xd) {
+ vector<int> R, vector<float> v, vector<float> xc, vector<float> xd) {
 	opt_sol retval;
 	int numV = accumulate(numR, 0)-numSfin;
 	retval.xc = vector<float> (numS);
@@ -224,16 +224,18 @@ opt_sol solveLinProg(float g, float r, vector<float> pc, vector<float> pd,
 	}
 	
 	// sum uc = ((g-r)+abs(g-r))/2
-	glp_set_row_bnds(lp, 2*numSfin+1, GLP_FX, floor(rho*((g-r)+abs(g-r))/2), floor(rho*((g-r)+abs(g-r))/2));
-//	if (g-r < 0) glp_set_row_bnds(lp, 2*numSfin+1, GLP_FX, 0, 0);
-//	else glp_set_row_bnds(lp, 2*numSfin+1, GLP_FX, floor(rho*(g-r)), floor(rho*(g-r)));
+	//glp_set_row_bnds(lp, 2*numSfin+1, GLP_FX, floor(rho*((g-r)+abs(g-r))/2), floor(rho*((g-r)+abs(g-r))/2));
+	//std::cout << "g = " << g << std::endl;
+	if (g-r < 0) glp_set_row_bnds(lp, 2*numSfin+1, GLP_FX, 0, 0);
+	else glp_set_row_bnds(lp, 2*numSfin+1, GLP_FX, floor(rho*(g-r)), floor(rho*(g-r)));
 	
 	// sum ud = ((r-g)+abs(r-g))/2
-	glp_set_row_bnds(lp, 2*numSfin+2, GLP_FX, floor(rho*((r-g)+abs(r-g))/2), floor(rho*((r-g)+abs(r-g))/2));
-//	if (r-g < 0) glp_set_row_bnds(lp, 2*numSfin+2, GLP_FX, 0, 0);
-//	else glp_set_row_bnds(lp, 2*numSfin+2, GLP_FX, floor(rho*(r-g)), floor(rho*(r-g)));
+	//glp_set_row_bnds(lp, 2*numSfin+2, GLP_FX, floor(rho*((r-g)+abs(r-g))/2), floor(rho*((r-g)+abs(r-g))/2));
+	//std::cout << "r = " << r << std::endl;
+	if (r-g < 0) glp_set_row_bnds(lp, 2*numSfin+2, GLP_FX, 0, 0);
+	else glp_set_row_bnds(lp, 2*numSfin+2, GLP_FX, floor(rho*(r-g)), floor(rho*(r-g)));
 	
-//	glp_write_lp(lp, NULL, "linearSystem.lp");
+	//glp_write_lp(lp, NULL, "linearSystem.lp");
 	
 	// Solve
 	ret = glp_simplex(lp, &parm_lp);
@@ -242,8 +244,8 @@ opt_sol solveLinProg(float g, float r, vector<float> pc, vector<float> pd,
 	retval.F = glp_get_obj_val(lp);
 	
 	for (int m=1; m<=numS; m++) {
-		std::cout << "xc " << glp_get_col_prim(lp, m) << std::endl;
-		std::cout << "xd " << glp_get_col_prim(lp, numS+m) << std::endl;
+		//std::cout << "xc " << glp_get_col_prim(lp, m) << std::endl;
+		//std::cout << "xd " << glp_get_col_prim(lp, numS+m) << std::endl;
 		retval.xc(m-1) = glp_get_col_prim(lp, m);
 		retval.xd(m-1) = glp_get_col_prim(lp, numS+m);
 		retval.xh(m-1) = glp_get_col_prim(lp, 2*numS+m);
