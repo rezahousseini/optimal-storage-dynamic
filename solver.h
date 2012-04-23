@@ -78,7 +78,7 @@ vector<int> set_fin;
 #include "transition.h"
 #include "slopeupdate.h"
 #include "utils.h"
-#include "STCStepsize.h"
+#include "OSAVIStepsize.h"
 
 solution solve(float _rho, matrix<float> _g, matrix<float> _r, prices _P, storages _S, int _numI, float _T, parameters _parm) {
 	rho = _rho;
@@ -100,7 +100,8 @@ solution solve(float _rho, matrix<float> _g, matrix<float> _r, prices _P, storag
 	matrix<float> xd = zero_matrix<float>(numS, numN);
 	matrix<float> cost = zero_matrix<float>(numN, _numI);
 	
-	STCStepsize stepsize(parm.alpha0, parm.c, parm.a, parm.b);
+	//STCStepsize stepsize(parm.alpha0, parm.c, parm.a, parm.b);
+	OSAVIStepsize stepsize(1, 1, 0.2, 1, parm.gama);
 	matrix<float> deltaStep(numSfin, numN);
 	for (int t=0; t<numN; t++) {
 		matrix_column<matrix<float> > (deltaStep, t) = parm.deltaStepMult*numR;
@@ -169,7 +170,7 @@ solution solve(float _rho, matrix<float> _g, matrix<float> _r, prices _P, storag
 		} // endfor t
 		
 		// Update stepsize
-		stepsize.update();
+		stepsize.update(accumulate(cost));
 	} // endfor i
 	
 	// Free memory
