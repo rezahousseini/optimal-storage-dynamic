@@ -78,6 +78,7 @@ vector<int> set_fin;
 #include "transition.h"
 #include "slopeupdate.h"
 #include "utils.h"
+#include "STCStepsize.h"
 
 solution solve(float _rho, matrix<float> _g, matrix<float> _r, prices _P, storages _S, int _numI, float _T, parameters _parm) {
 	rho = _rho;
@@ -99,7 +100,7 @@ solution solve(float _rho, matrix<float> _g, matrix<float> _r, prices _P, storag
 	matrix<float> xd = zero_matrix<float>(numS, numN);
 	matrix<float> cost = zero_matrix<float>(numN, _numI);
 	
-	vector<float> alpha(numN);
+	STCStepsize stepsize(parm.alpha0, parm.c, parm.a, parm.b);
 	matrix<float> deltaStep(numSfin, numN);
 	for (int t=0; t<numN; t++) {
 		matrix_column<matrix<float> > (deltaStep, t) = parm.deltaStepMult*numR;
@@ -131,9 +132,6 @@ solution solve(float _rho, matrix<float> _g, matrix<float> _r, prices _P, storag
 			matrix_column<matrix<float> > (xc, t) = ret.xc;
 			matrix_column<matrix<float> > (xd, t) = ret.xd;
 			
-			// Update stepsize
-			alpha(t) = parm.alpha0*(parm.b/i+parm.a)/(parm.b/i+parm.a+pow(i, parm.c));
-			
 			if (t < numN-1) {
 				// Resource transition function
 				matrix_column<matrix<int> > (R, t+1) = transitionResource(
@@ -153,7 +151,7 @@ solution solve(float _rho, matrix<float> _g, matrix<float> _r, prices _P, storag
 					matrix_column<matrix<float> > (xc, t+1),
 					matrix_column<matrix<float> > (xd, t+1),
 					matrix_column<matrix<float> > (deltaStep, t),
-					alpha(t)
+					stepsize.get()
 				);
 			} // endif
 			
@@ -169,6 +167,9 @@ solution solve(float _rho, matrix<float> _g, matrix<float> _r, prices _P, storag
 				}
 			}
 		} // endfor t
+		
+		// Update stepsize
+		stepsize.update();
 	} // endfor i
 	
 	// Free memory
