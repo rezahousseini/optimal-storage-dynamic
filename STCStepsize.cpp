@@ -1,7 +1,7 @@
 #include "STCStepsize.h"
 #include <math.h>
 
-STCStepsize::STCStepsize(float _alpha0, float _beta, float _a, float _b) : Stepsize(_alpha0), beta(_beta), a(_a), b(_b) {
+STCStepsize::STCStepsize(float alpha0, float _beta, float _a, float _b) : Stepsize(alpha0), beta(_beta), a(_a), b(_b) {
 }
 
 void STCStepsize::update(void) {

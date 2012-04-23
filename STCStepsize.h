@@ -5,7 +5,7 @@
 
 class STCStepsize : public Stepsize {
 	public:
-		STCStepsize(float _alpha0, float _beta, float _a, float _b);
+		STCStepsize(float alpha0, float _beta, float _a, float _b);
 		void update(void);
 	protected:
 		float beta;
