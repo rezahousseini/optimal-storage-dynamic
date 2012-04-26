@@ -7,7 +7,7 @@
  *
  * @return R
  *
- */ 
+ */
 
 matrix<int> init() {
 	// Number of resources

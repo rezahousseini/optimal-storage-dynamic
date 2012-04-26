@@ -1,3 +1,5 @@
+using namespace boost::math;
+
 struct opt_sol {
 	float F;
 	vector<float> xc;

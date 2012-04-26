@@ -12,8 +12,10 @@
 #include <boost/range/numeric.hpp>
 #include <boost/random.hpp>
 #include <boost/generator_iterator.hpp>
+#include <boost/math/special_functions/fpclassify.hpp>
 
 using namespace boost;
+using namespace boost::math;
 using namespace boost::numeric::ublas;
 
 // Storage parameters

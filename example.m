@@ -1,12 +1,12 @@
 clear all;
 close all;
 
-numN=200;
+numN=1000;
 T=1/2;
 n=0:numN-1;
 t=n*T;
 
-numI=100;
+numI=300;
 rho=10;
 
 S.Qmax=[10,Inf];
@@ -65,6 +65,10 @@ figure(3)
 plot(t,q(1,:),t,mean(g,2),t,mean(r,2),t,p)
 grid on
 
-figure(4)
-plot(cumsum(cost))
+%figure(4)
+%plot(cumsum(cost))
+%grid on
+
+figure(5)
+plot(sum(costIter))
 grid on
