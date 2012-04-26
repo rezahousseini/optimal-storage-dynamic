@@ -8,8 +8,8 @@
 	- [utils.h](https://github.com/rezahousseini/optimal-storage-dynamic/blob/multios/utils.h)
 - Libraries used are **GLPK** and **BOOST**
 - [ADPoptimalNStorage.cc](https://github.com/rezahousseini/optimal-storage-dynamic/blob/multios/ADPoptimalNStorage.cc) is the Octave interface
-	- Compile it with `mkoctfile ADPoptimalNStorage.cc -lglpk`
+	- Compile it with `mkoctfile ADPoptimalNStorage.cc STCStepsize.cpp Stepsize.cpp -lglpk`
 	- **BOOST** library should be in the include path
 - [ADPoptimalNStorage.cpp](https://github.com/rezahousseini/optimal-storage-dynamic/blob/multios/ADPoptimalNStorage.cpp) is the Matlab interface
-	- Compile it with `mex ADPoptimalNStorage.cpp -lglpk`
+	- Compile it with `mex ADPoptimalNStorage.cpp STCStepsize.cpp Stepsize.cpp -lglpk`
 	- **BOOST** library should be in the include path
