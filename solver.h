@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <math.h>
 #include <iostream>
-#include <glpk.h>
 #include <numeric>
 #include <boost/numeric/ublas/matrix.hpp>
 #include <boost/numeric/ublas/vector.hpp>
@@ -13,6 +12,7 @@
 #include <boost/random.hpp>
 #include <boost/generator_iterator.hpp>
 #include <boost/math/special_functions/fpclassify.hpp>
+#include <glpk.h>
 
 using namespace boost;
 using namespace boost::math;
@@ -103,7 +103,7 @@ solution solve(float _rho, matrix<float> _g, matrix<float> _r, prices _P, storag
 	matrix<float> xd = zero_matrix<float>(numS, numN);
 	matrix<float> cost = zero_matrix<float>(numN, _numI);
 	
-	STCStepsize stepsize2(parm.alpha0, parm.c, parm.a, parm.b);
+	STCStepsize stepsize(parm.alpha0, parm.c, parm.a, parm.b);
 	//OSAVIStepsize stepsize(1, 1, 0.2, 1, parm.gama);
 	matrix<float> deltaStep(numSfin, numN);
 	for (int t=0; t<numN; t++) {

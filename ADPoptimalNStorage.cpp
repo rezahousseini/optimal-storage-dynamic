@@ -111,7 +111,7 @@ vector<float> mex2ublas1d(const mxArray *a_mex) {
 }
 
 matrix<float> mex2ublas2d(const mxArray *a_mex) {
-    const int *mwSize = mxGetDimensions(a_mex);
+    const mwSize *dim = mxGetDimensions(a_mex);
     int dim0 = dim[0];
     int dim1 = dim[1];
 	matrix<float> a(dim0, dim1);
@@ -127,7 +127,7 @@ matrix<float> mex2ublas2d(const mxArray *a_mex) {
 }
 
 vector<matrix<float> > mex2ublas3d(const mxArray *a_mex) {
-    const int *mwSize = mxGetDimensions(a_mex);
+    const mwSize *dim = mxGetDimensions(a_mex);
 	int dim0 = dim[0];
 	int dim1 = dim[1];
 	int dim2 = dim[2];
