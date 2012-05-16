@@ -83,13 +83,13 @@ vector<int> set_fin;
 //#include "OSAVIStepsize.h"
 #include "STCStepsize.h"
 
-solution solve(float _rho, matrix<float> _g, matrix<float> _r, prices _P, storages _S, int _numI, float _T, parameters _parm) {
-	rho = _rho;
-	S = _S;
-	T = _T;
-	parm = _parm;
-	numN = _g.size1();
-	numW = _g.size2();
+solution solve(float in_rho, matrix<float> in_g, matrix<float> in_r, prices in_P, storages in_S, int in_numI, float in_T, parameters in_parm) {
+	rho = in_rho;
+	S = in_S;
+	T = in_T;
+	parm = in_parm;
+	numN = in_g.size1();
+	numW = in_g.size2();
 	
 	// Pre-decision asset level
 	matrix<int> R = init();
@@ -101,7 +101,7 @@ solution solve(float _rho, matrix<float> _g, matrix<float> _r, prices _P, storag
 	vector<int> smpl;
 	matrix<float> xc = zero_matrix<float>(numS, numN);
 	matrix<float> xd = zero_matrix<float>(numS, numN);
-	matrix<float> cost = zero_matrix<float>(numN, _numI);
+	matrix<float> cost = zero_matrix<float>(numN, in_numI);
 	
 	STCStepsize stepsize(parm.alpha0, parm.c, parm.a, parm.b);
 	//OSAVIStepsize stepsize(1, 1, 0.2, 1, parm.gama);
@@ -123,9 +123,9 @@ solution solve(float _rho, matrix<float> _g, matrix<float> _r, prices _P, storag
 		for (int t=0; t<numN; t++) {
 			// Find optimal decisions
 			ret = solveLinProg(
-				_g(t, smpl(t)), _r(t, smpl(t)),
-				matrix_column<matrix<float> > (_P.pc(smpl(t)), t),
-				matrix_column<matrix<float> > (_P.pd(smpl(t)), t),
+				in_g(t, smpl(t)), in_r(t, smpl(t)),
+				matrix_column<matrix<float> > (in_P.pc(smpl(t)), t),
+				matrix_column<matrix<float> > (in_P.pd(smpl(t)), t),
 				matrix_column<matrix<int> > (R, t),
 				matrix_column<matrix<float> > (v, t),
 				matrix_column<matrix<float> > (xc, t),
@@ -146,9 +146,9 @@ solution solve(float _rho, matrix<float> _g, matrix<float> _r, prices _P, storag
 				
 				// Update cost function
 				matrix_column<matrix<float> > (v, t) = update(
-					_g(t+1, smpl(t+1)), _r(t+1, smpl(t+1)),
-					matrix_column<matrix<float> > (_P.pc(smpl(t+1)), t+1),
-					matrix_column<matrix<float> > (_P.pd(smpl(t+1)), t+1),
+					in_g(t+1, smpl(t+1)), in_r(t+1, smpl(t+1)),
+					matrix_column<matrix<float> > (in_P.pc(smpl(t+1)), t+1),
+					matrix_column<matrix<float> > (in_P.pd(smpl(t+1)), t+1),
 					matrix_column<matrix<int> > (R, t+1),
 					matrix_column<matrix<float> > (v, t),
 					matrix_column<matrix<float> > (v, t+1),
@@ -160,9 +160,9 @@ solution solve(float _rho, matrix<float> _g, matrix<float> _r, prices _P, storag
 			} // endif
 			
 			// Update cost and deltaStep
-			cost(t, i) = _g(t, smpl(t))*_P.pg(t, smpl(t))+_r(t, smpl(t))*_P.pr(t, smpl(t));
+			cost(t, i) = in_g(t, smpl(t))*in_P.pg(t, smpl(t))+in_r(t, smpl(t))*in_P.pr(t, smpl(t));
 			for (int m=0; m<numS; m++) {
-				cost(t, i) = cost(t, i)+xc(m, t)/rho*_P.pc(smpl(t))(m, t)+xd(m, t)/rho*_P.pd(smpl(t))(m, t);
+				cost(t, i) = cost(t, i)+xc(m, t)/rho*in_P.pc(smpl(t))(m, t)+xd(m, t)/rho*in_P.pd(smpl(t))(m, t);
 			}
 			
 			for (int m=0; m<numSfin; m++) {
@@ -184,7 +184,7 @@ solution solve(float _rho, matrix<float> _g, matrix<float> _r, prices _P, storag
 	sol.q = static_cast<matrix<float> >(R)/rho;
 	sol.uc = xc/rho;
 	sol.ud = xd/rho;
-	sol.cost = matrix_column<matrix<float> > (cost, _numI-1);
+	sol.cost = matrix_column<matrix<float> > (cost, in_numI-1);
 	sol.costIter = cost;
 	
 	return sol;
