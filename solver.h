@@ -116,7 +116,7 @@ solution solve(float in_rho, matrix<float> in_g, matrix<float> in_r, prices in_P
 	initLinProg();
 	
 	// Iteration loop
-	for (int i=1; i<_numI; i++) {
+	for (int i=1; i<in_numI; i++) {
 		smpl = randi(0, numW, numN); // Generate sample
 		
 		// Time loop
